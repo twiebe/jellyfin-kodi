@@ -3,7 +3,7 @@
 	<section id="plugin.video.jellyfin">
 		<category id="jellyfin for kodi" label="29999" help="">
 			<group id="1">
-				<setting id="username" type="string" label="30024" help="">
+				<setting id="username" type="string" label="30024" help="34000">
 					<level>0</level>
 					<default/>
 					<constraints>
@@ -14,7 +14,7 @@
 						<heading>30024</heading>
 					</control>
 				</setting>
-				<setting id="serverName" type="string" label="30001" help="">
+				<setting id="serverName" type="string" label="30001" help="34001">
 					<level>0</level>
 					<default/>
 					<constraints>
@@ -25,7 +25,7 @@
 						<heading>30001</heading>
 					</control>
 				</setting>
-				<setting id="server" type="string" label="30000" help="">
+				<setting id="server" type="string" label="30000" help="34002">
 					<level>0</level>
 					<default/>
 					<constraints>
@@ -36,7 +36,7 @@
 						<heading>30000</heading>
 					</control>
 				</setting>
-				<setting id="sslverify" type="boolean" label="30500" help="">
+				<setting id="sslverify" type="boolean" label="30500" help="34003">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
@@ -44,12 +44,12 @@
 			</group>
 			<group id="2"/>
 			<group id="3" label="33110">
-				<setting id="deviceNameOpt" type="boolean" label="30504" help="">
+				<setting id="deviceNameOpt" type="boolean" label="30504" help="34004">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="deviceName" type="string" label="30016" help="" parent="deviceNameOpt">
+				<setting id="deviceName" type="string" label="30016" help="34005" parent="deviceNameOpt">
 					<level>0</level>
 					<default>Kodi</default>
 					<constraints>
@@ -68,12 +68,12 @@
 		</category>
 		<category id="sync" label="30506" help="">
 			<group id="1" label="33186">
-				<setting id="kodiCompanion" type="boolean" label="33137" help="">
+				<setting id="kodiCompanion" type="boolean" label="33137" help="34006">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="syncIndicator" type="integer" label="30507" help="" parent="kodiCompanion">
+				<setting id="syncIndicator" type="integer" label="30507" help="34007" parent="kodiCompanion">
 					<level>0</level>
 					<default>999</default>
 					<dependencies>
@@ -85,19 +85,19 @@
 						<heading>30507</heading>
 					</control>
 				</setting>
-				<setting id="syncDuringPlay" type="boolean" label="33185" help="">
+				<setting id="syncDuringPlay" type="boolean" label="33185" help="34008">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="dbSyncScreensaver" type="boolean" label="30536" help="">
+				<setting id="dbSyncScreensaver" type="boolean" label="30536" help="34009">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
 			</group>
 			<group id="2" label="33111">
-				<setting id="useDirectPaths" type="integer" label="30511" help="">
+				<setting id="useDirectPaths" type="integer" label="30511" help="34010">
 					<level>0</level>
 					<default>1</default>
 					<constraints>
@@ -110,7 +110,7 @@
 				</setting>
 			</group>
 			<group id="3" label="33175">
-				<setting id="limitIndex" type="integer" label="30515" help="">
+				<setting id="limitIndex" type="integer" label="30515" help="34011">
 					<level>0</level>
 					<default>15</default>
 					<constraints>
@@ -122,7 +122,7 @@
 						<popup>false</popup>
 					</control>
 				</setting>
-				<setting id="limitThreads" type="integer" label="33174" help="">
+				<setting id="limitThreads" type="integer" label="33174" help="34012">
 					<level>0</level>
 					<default>3</default>
 					<constraints>
@@ -136,17 +136,17 @@
 				</setting>
 			</group>
 			<group id="4" label="33176">
-				<setting id="enableCoverArt" type="boolean" label="30157" help="">
+				<setting id="enableCoverArt" type="boolean" label="30157" help="34013">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="compressArt" type="boolean" label="33116" help="">
+				<setting id="compressArt" type="boolean" label="33116" help="34014">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="maxArtResolution" type="integer" label="33201" help="">
+				<setting id="maxArtResolution" type="integer" label="33201" help="34015">
 					<level>0</level>
 					<default>5</default>
 					<constraints>
@@ -173,12 +173,12 @@
 		</category>
 		<category id="playback" label="30516" help="">
 			<group id="1" label="33113">
-				<setting id="enableCinema" type="boolean" label="30518" help="">
+				<setting id="enableCinema" type="boolean" label="30518" help="34016">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="askCinema" type="boolean" label="30519" help="" parent="enableCinema">
+				<setting id="askCinema" type="boolean" label="30519" help="34017" parent="enableCinema">
 					<level>0</level>
 					<default>false</default>
 					<dependencies>
@@ -188,12 +188,12 @@
 					</dependencies>
 					<control type="toggle"/>
 				</setting>
-				<setting id="playFromStream" type="boolean" label="30002" help="">
+				<setting id="playFromStream" type="boolean" label="30002" help="34018">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="playFromTranscode" type="boolean" label="33179" help="" parent="playFromStream">
+				<setting id="playFromTranscode" type="boolean" label="33179" help="34019" parent="playFromStream">
 					<level>0</level>
 					<default>false</default>
 					<dependencies>
@@ -203,7 +203,7 @@
 					</dependencies>
 					<control type="toggle"/>
 				</setting>
-				<setting id="maxBitrate" type="integer" label="30160" help="">
+				<setting id="maxBitrate" type="integer" label="30160" help="34020">
 					<level>0</level>
 					<default>23</default>
 					<constraints>
@@ -237,7 +237,7 @@
 					</constraints>
 					<control type="spinner" format="string"/>
 				</setting>
-				<setting id="enableExternalSubs" type="boolean" label="33114" help="">
+				<setting id="enableExternalSubs" type="boolean" label="33114" help="34021">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
@@ -245,7 +245,7 @@
 			</group>
 			<group id="2"/>
 			<group id="3" label="33115">
-				<setting id="videoPreferredCodec" type="string" label="30161" help="">
+				<setting id="videoPreferredCodec" type="string" label="30161" help="34022">
 					<level>0</level>
 					<default>H264/AVC</default>
 					<constraints>
@@ -259,7 +259,7 @@
 						<heading>30161</heading>
 					</control>
 				</setting>
-				<setting id="transcode_h265" type="boolean" label="30522" help="">
+				<setting id="transcode_h265" type="boolean" label="30522" help="34023">
 					<level>0</level>
 					<default>false</default>
 					<dependencies>
@@ -269,7 +269,7 @@
 					</dependencies>
 					<control type="toggle"/>
 				</setting>
-				<setting id="transcode_h265_rext" type="boolean" label="33202" help="" parent="transcode_h265">
+				<setting id="transcode_h265_rext" type="boolean" label="33202" help="34024" parent="transcode_h265">
 					<level>0</level>
 					<default>false</default>
 					<dependencies>
@@ -282,27 +282,27 @@
 					</dependencies>
 					<control type="toggle"/>
 				</setting>
-				<setting id="transcodeHi10P" type="boolean" label="30537" help="">
+				<setting id="transcodeHi10P" type="boolean" label="30537" help="34025">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="transcode_mpeg2" type="boolean" label="30523" help="">
+				<setting id="transcode_mpeg2" type="boolean" label="30523" help="34026">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="transcode_vc1" type="boolean" label="30524" help="">
+				<setting id="transcode_vc1" type="boolean" label="30524" help="34027">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="transcode_vp9" type="boolean" label="30525" help="">
+				<setting id="transcode_vp9" type="boolean" label="30525" help="34028">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="transcode_av1" type="boolean" label="30526" help="">
+				<setting id="transcode_av1" type="boolean" label="30526" help="34029">
 					<level>0</level>
 					<default>false</default>
 					<dependencies>
@@ -312,7 +312,7 @@
 					</dependencies>
 					<control type="toggle"/>
 				</setting>
-				<setting id="audioPreferredCodec" type="string" label="30162" help="">
+				<setting id="audioPreferredCodec" type="string" label="30162" help="34030">
 					<level>0</level>
 					<default>AAC</default>
 					<constraints>
@@ -329,7 +329,7 @@
 						<heading>30162</heading>
 					</control>
 				</setting>
-				<setting id="audioBitrate" type="integer" label="30163" help="">
+				<setting id="audioBitrate" type="integer" label="30163" help="34031">
 					<level>0</level>
 					<default>4</default>
 					<constraints>
@@ -345,7 +345,7 @@
 					</constraints>
 					<control type="spinner" format="string"/>
 				</setting>
-				<setting id="audioMaxChannels" type="integer" label="30164" help="">
+				<setting id="audioMaxChannels" type="integer" label="30164" help="34032">
 					<level>0</level>
 					<default>6</default>
 					<constraints>
@@ -357,7 +357,7 @@
 						<popup>false</popup>
 					</control>
 				</setting>
-				<setting id="skipDialogTranscode" type="integer" label="33159" help="">
+				<setting id="skipDialogTranscode" type="integer" label="33159" help="34033">
 					<level>0</level>
 					<default>3</default>
 					<constraints>
@@ -371,7 +371,7 @@
 					</constraints>
 					<control type="spinner" format="string"/>
 				</setting>
-				<setting id="allowBurnedSubs" type="boolean" label="30165" help="">
+				<setting id="allowBurnedSubs" type="boolean" label="30165" help="34034">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
@@ -379,7 +379,7 @@
 			</group>
 			<group id="4"/>
 			<group id="5" label="33112">
-				<setting id="resumeJumpBack" type="integer" label="30521" help="">
+				<setting id="resumeJumpBack" type="integer" label="30521" help="34035">
 					<level>0</level>
 					<default>10</default>
 					<constraints>
@@ -391,12 +391,12 @@
 						<popup>false</popup>
 					</control>
 				</setting>
-				<setting id="offerDelete" type="boolean" label="30114" help="">
+				<setting id="offerDelete" type="boolean" label="30114" help="34036">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="deleteTV" type="boolean" label="30115" help="" parent="offerDelete">
+				<setting id="deleteTV" type="boolean" label="30115" help="34037" parent="offerDelete">
 					<level>0</level>
 					<default>false</default>
 					<dependencies>
@@ -406,7 +406,7 @@
 					</dependencies>
 					<control type="toggle"/>
 				</setting>
-				<setting id="deleteMovies" type="boolean" label="30116" help="" parent="offerDelete">
+				<setting id="deleteMovies" type="boolean" label="30116" help="34038" parent="offerDelete">
 					<level>0</level>
 					<default>false</default>
 					<dependencies>
@@ -426,17 +426,17 @@
 				</setting>
 			</group>
 			<group id="6" label="33246">
-				<setting id="mediaSegmentsEnabled" type="boolean" label="33247" help="">
+				<setting id="mediaSegmentsEnabled" type="boolean" label="33247" help="34039">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="enableUpNext" type="boolean" label="33269" help="">
+				<setting id="enableUpNext" type="boolean" label="33269" help="34040">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="skipIntroductionMode" type="integer" label="33252" help="" parent="mediaSegmentsEnabled">
+				<setting id="skipIntroductionMode" type="integer" label="33252" help="34041" parent="mediaSegmentsEnabled">
 					<level>0</level>
 					<default>2</default>
 					<constraints>
@@ -453,7 +453,7 @@
 					</dependencies>
 					<control type="spinner" format="string"/>
 				</setting>
-				<setting id="skipCreditsMode" type="integer" label="33253" help="" parent="mediaSegmentsEnabled">
+				<setting id="skipCreditsMode" type="integer" label="33253" help="34042" parent="mediaSegmentsEnabled">
 					<level>0</level>
 					<default>2</default>
 					<constraints>
@@ -470,7 +470,7 @@
 					</dependencies>
 					<control type="spinner" format="string"/>
 				</setting>
-				<setting id="skipRecapMode" type="integer" label="33254" help="" parent="mediaSegmentsEnabled">
+				<setting id="skipRecapMode" type="integer" label="33254" help="34043" parent="mediaSegmentsEnabled">
 					<level>0</level>
 					<default>0</default>
 					<constraints>
@@ -487,7 +487,7 @@
 					</dependencies>
 					<control type="spinner" format="string"/>
 				</setting>
-				<setting id="skipPreviewMode" type="integer" label="33255" help="" parent="mediaSegmentsEnabled">
+				<setting id="skipPreviewMode" type="integer" label="33255" help="34044" parent="mediaSegmentsEnabled">
 					<level>0</level>
 					<default>0</default>
 					<constraints>
@@ -504,7 +504,7 @@
 					</dependencies>
 					<control type="spinner" format="string"/>
 				</setting>
-				<setting id="skipCommercialMode" type="integer" label="33259" help="" parent="mediaSegmentsEnabled">
+				<setting id="skipCommercialMode" type="integer" label="33259" help="34045" parent="mediaSegmentsEnabled">
 					<level>0</level>
 					<default>0</default>
 					<constraints>
@@ -525,12 +525,12 @@
 		</category>
 		<category id="interface" label="30235" help="">
 			<group id="1">
-				<setting id="enableContext" type="boolean" label="33105" help="">
+				<setting id="enableContext" type="boolean" label="33105" help="34046">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="enableContextTranscode" type="boolean" label="33106" help="" parent="enableContext">
+				<setting id="enableContextTranscode" type="boolean" label="33106" help="34047" parent="enableContext">
 					<level>0</level>
 					<default>true</default>
 					<dependencies>
@@ -540,7 +540,7 @@
 					</dependencies>
 					<control type="toggle"/>
 				</setting>
-				<setting id="enableContextDelete" type="boolean" label="33143" help="" parent="enableContext">
+				<setting id="enableContextDelete" type="boolean" label="33143" help="34048" parent="enableContext">
 					<level>0</level>
 					<default>false</default>
 					<dependencies>
@@ -550,7 +550,7 @@
 					</dependencies>
 					<control type="toggle"/>
 				</setting>
-				<setting id="skipContextMenu" type="boolean" label="30520" help="" parent="enableContext">
+				<setting id="skipContextMenu" type="boolean" label="30520" help="34049" parent="enableContext">
 					<level>0</level>
 					<default>false</default>
 					<dependencies>
@@ -562,7 +562,7 @@
 				</setting>
 			</group>
 			<group id="2" label="33107">
-				<setting id="additionalUsers" type="string" label="30528" help="">
+				<setting id="additionalUsers" type="string" label="30528" help="34050">
 					<level>0</level>
 					<default/>
 					<constraints>
@@ -575,22 +575,22 @@
 			</group>
 			<group id="3"/>
 			<group id="4" label="30534">
-				<setting id="connectMsg" type="boolean" label="30249" help="">
+				<setting id="connectMsg" type="boolean" label="30249" help="34051">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="offlinetMsg" type="boolean" label="30545" help="">
+				<setting id="offlinetMsg" type="boolean" label="30545" help="34052">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="restartMsg" type="boolean" label="30530" help="">
+				<setting id="restartMsg" type="boolean" label="30530" help="34053">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="displayMessage" type="integer" label="30547" help="">
+				<setting id="displayMessage" type="integer" label="30547" help="34054">
 					<level>0</level>
 					<default>4</default>
 					<constraints>
@@ -604,19 +604,19 @@
 				</setting>
 			</group>
 			<group id="5" label="33108">
-				<setting id="syncProgress" type="integer" label="33177" help="">
+				<setting id="syncProgress" type="integer" label="33177" help="34055">
 					<level>0</level>
 					<default>15</default>
 					<control type="edit" format="integer">
 						<heading>33177</heading>
 					</control>
 				</setting>
-				<setting id="newContent" type="boolean" label="30531" help="">
+				<setting id="newContent" type="boolean" label="30531" help="34056">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="newvideotime" type="integer" label="30532" help="" parent="newContent">
+				<setting id="newvideotime" type="integer" label="30532" help="34057" parent="newContent">
 					<level>0</level>
 					<default>5</default>
 					<dependencies>
@@ -628,7 +628,7 @@
 						<heading>30532</heading>
 					</control>
 				</setting>
-				<setting id="newmusictime" type="integer" label="30533" help="" parent="newContent">
+				<setting id="newmusictime" type="integer" label="30533" help="34058" parent="newContent">
 					<level>0</level>
 					<default>2</default>
 					<dependencies>
@@ -644,7 +644,7 @@
 		</category>
 		<category id="plugin" label="33109" help="">
 			<group id="1">
-				<setting id="maxDaysInNextEpisodes" type="integer" label="30538" help="">
+				<setting id="maxDaysInNextEpisodes" type="integer" label="30538" help="34059">
 					<level>0</level>
 					<default>366</default>
 					<constraints>
@@ -656,17 +656,17 @@
 						<formatlabel>30538</formatlabel>
 					</control>
 				</setting>
-				<setting id="ignoreSpecialsNextEpisodes" type="boolean" label="30527" help="">
+				<setting id="ignoreSpecialsNextEpisodes" type="boolean" label="30527" help="34060">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="getCast" type="boolean" label="33124" help="">
+				<setting id="getCast" type="boolean" label="33124" help="34061">
 					<level>0</level>
 					<default>false</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="remoteControl" type="boolean" label="33125" help="">
+				<setting id="remoteControl" type="boolean" label="33125" help="34062">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
@@ -675,7 +675,7 @@
 		</category>
 		<category id="advanced" label="30022" help="">
 			<group id="1">
-				<setting id="logLevel" type="integer" label="30004" help="">
+				<setting id="logLevel" type="integer" label="30004" help="34063">
 					<level>0</level>
 					<default>1</default>
 					<constraints>
@@ -687,12 +687,12 @@
 					</constraints>
 					<control type="spinner" format="string"/>
 				</setting>
-				<setting id="maskInfo" type="boolean" label="33164" help="">
+				<setting id="maskInfo" type="boolean" label="33164" help="34064">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="resetLocalKodiDatabase" type="action" label="30239" help="">
+				<setting id="resetLocalKodiDatabase" type="action" label="30239" help="34065">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.video.jellyfin?mode=reset)</data>
 					<constraints>
@@ -702,7 +702,7 @@
 						<close>true</close>
 					</control>
 				</setting>
-				<setting id="generateNewDeviceId" type="action" label="30535" help="">
+				<setting id="generateNewDeviceId" type="action" label="30535" help="34066">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.video.jellyfin?mode=deviceid)</data>
 					<constraints>
@@ -714,12 +714,12 @@
 				</setting>
 			</group>
 			<group id="2" label="33196">
-				<setting id="enableAddon" type="boolean" label="33195" help="">
+				<setting id="enableAddon" type="boolean" label="33195" help="34067">
 					<level>0</level>
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
-				<setting id="restartJellyfinForKodi" type="action" label="33180" help="">
+				<setting id="restartJellyfinForKodi" type="action" label="33180" help="34068">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.video.jellyfin?mode=restartservice)</data>
 					<constraints>
@@ -729,7 +729,7 @@
 						<close>true</close>
 					</control>
 				</setting>
-				<setting id="startupDelay" type="integer" label="30529" help="">
+				<setting id="startupDelay" type="integer" label="30529" help="34069">
 					<level>0</level>
 					<default>0</default>
 					<control type="edit" format="integer">
@@ -739,7 +739,7 @@
 			</group>
 			<group id="3"/>
 			<group id="4" label="33104">
-				<setting id="backupPath" type="path" label="33093" help="">
+				<setting id="backupPath" type="path" label="33093" help="34070">
 					<level>0</level>
 					<default/>
 					<constraints>
@@ -749,7 +749,7 @@
 						<heading>33093</heading>
 					</control>
 				</setting>
-				<setting id="createBackup" type="action" label="33092" help="">
+				<setting id="createBackup" type="action" label="33092" help="34071">
 					<level>0</level>
 					<data>RunPlugin(plugin://plugin.video.jellyfin?mode=backup)</data>
 					<constraints>

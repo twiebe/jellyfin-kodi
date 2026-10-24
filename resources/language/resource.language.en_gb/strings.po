@@ -1261,6 +1261,294 @@ msgctxt "#33269"
 msgid "Enable UpNext add-on integration"
 msgstr "Enable UpNext add-on integration"
 
+msgctxt "#34000"
+msgid "Jellyfin user this device is signed in as."
+msgstr "Jellyfin user this device is signed in as."
+
+msgctxt "#34001"
+msgid "Name of the connected Jellyfin server."
+msgstr "Name of the connected Jellyfin server."
+
+msgctxt "#34002"
+msgid "Address of the connected Jellyfin server."
+msgstr "Address of the connected Jellyfin server."
+
+msgctxt "#34003"
+msgid "Check the server's HTTPS certificate. Turn off only for self-signed certificates."
+msgstr "Check the server's HTTPS certificate. Turn off only for self-signed certificates."
+
+msgctxt "#34004"
+msgid "Use your own name for this device instead of Kodi's device name."
+msgstr "Use your own name for this device instead of Kodi's device name."
+
+msgctxt "#34005"
+msgid "Name of this device in the Jellyfin dashboard."
+msgstr "Name of this device in the Jellyfin dashboard."
+
+msgctxt "#34006"
+msgid "Catch up on changes made while Kodi was off. Needs the Kodi Sync Queue server plugin."
+msgstr "Catch up on changes made while Kodi was off. Needs the Kodi Sync Queue server plugin."
+
+msgctxt "#34007"
+msgid "Ask before syncing when more updates than this are pending."
+msgstr "Ask before syncing when more updates than this are pending."
+
+msgctxt "#34008"
+msgid "Apply library updates during playback. May cause stutter on slow devices."
+msgstr "Apply library updates during playback. May cause stutter on slow devices."
+
+msgctxt "#34009"
+msgid "Allow Kodi's screensaver to start during a library sync."
+msgstr "Allow Kodi's screensaver to start during a library sync."
+
+msgctxt "#34010"
+msgid "Add-on: stream via Jellyfin. Native: play files directly from their network share."
+msgstr "Add-on: stream via Jellyfin. Native: play files directly from their network share."
+
+msgctxt "#34011"
+msgid "Items per server request during sync. Lower it if the server is slow."
+msgstr "Items per server request during sync. Lower it if the server is slow."
+
+msgctxt "#34012"
+msgid "Parallel downloads during sync. Lower it on weak devices or servers."
+msgstr "Parallel downloads during sync. Lower it on weak devices or servers."
+
+msgctxt "#34013"
+msgid "No effect on Jellyfin 10.5 and newer, which removed image enhancers."
+msgstr "No effect on Jellyfin 10.5 and newer, which removed image enhancers."
+
+msgctxt "#34014"
+msgid "Request artwork at quality 90 instead of 100. Saves a little bandwidth."
+msgstr "Request artwork at quality 90 instead of 100. Saves a little bandwidth."
+
+msgctxt "#34015"
+msgid "Largest artwork size to download. Lower saves bandwidth and space."
+msgstr "Largest artwork size to download. Lower saves bandwidth and space."
+
+msgctxt "#34016"
+msgid "Play trailers and intros from the server before a movie."
+msgstr "Play trailers and intros from the server before a movie."
+
+msgctxt "#34017"
+msgid "Ask each time whether to play trailers first."
+msgstr "Ask each time whether to play trailers first."
+
+msgctxt "#34018"
+msgid "Stream from the server even if Kodi could open the file directly."
+msgstr "Stream from the server even if Kodi could open the file directly."
+
+msgctxt "#34019"
+msgid "Always let the server transcode instead of streaming the original."
+msgstr "Always let the server transcode instead of streaming the original."
+
+msgctxt "#34020"
+msgid "Highest bitrate to stream. Videos above it are transcoded."
+msgstr "Highest bitrate to stream. Videos above it are transcoded."
+
+msgctxt "#34021"
+msgid "Load external subtitle files from the server."
+msgstr "Load external subtitle files from the server."
+
+msgctxt "#34022"
+msgid "Video codec the server uses when transcoding."
+msgstr "Video codec the server uses when transcoding."
+
+msgctxt "#34023"
+msgid "Transcode H265/HEVC videos, for devices that can't play them."
+msgstr "Transcode H265/HEVC videos, for devices that can't play them."
+
+msgctxt "#34024"
+msgid "Transcode H265/HEVC range extension videos (e.g. 4:2:2, 4:4:4)."
+msgstr "Transcode H265/HEVC range extension videos (e.g. 4:2:2, 4:4:4)."
+
+msgctxt "#34025"
+msgid "Transcode 10-bit H264 (Hi10P) videos, for devices that can't play them."
+msgstr "Transcode 10-bit H264 (Hi10P) videos, for devices that can't play them."
+
+msgctxt "#34026"
+msgid "Transcode MPEG2 videos, for devices that can't play them."
+msgstr "Transcode MPEG2 videos, for devices that can't play them."
+
+msgctxt "#34027"
+msgid "Transcode VC-1 videos, for devices that can't play them."
+msgstr "Transcode VC-1 videos, for devices that can't play them."
+
+msgctxt "#34028"
+msgid "Transcode VP9 videos, for devices that can't play them."
+msgstr "Transcode VP9 videos, for devices that can't play them."
+
+msgctxt "#34029"
+msgid "Transcode AV1 videos, for devices that can't play them."
+msgstr "Transcode AV1 videos, for devices that can't play them."
+
+msgctxt "#34030"
+msgid "Audio codec the server uses when transcoding."
+msgstr "Audio codec the server uses when transcoding."
+
+msgctxt "#34031"
+msgid "Audio bitrate in kbps when transcoding."
+msgstr "Audio bitrate in kbps when transcoding."
+
+msgctxt "#34032"
+msgid "Maximum audio channels when transcoding, e.g. 2 for stereo."
+msgstr "Maximum audio channels when transcoding, e.g. 2 for stereo."
+
+msgctxt "#34033"
+msgid "Which tracks to ask for before transcoding."
+msgstr "Which tracks to ask for before transcoding."
+
+msgctxt "#34034"
+msgid "Let the server burn in subtitles Kodi can't display."
+msgstr "Let the server burn in subtitles Kodi can't display."
+
+msgctxt "#34035"
+msgid "Seconds to rewind when resuming playback."
+msgstr "Seconds to rewind when resuming playback."
+
+msgctxt "#34036"
+msgid "Offer to delete an item from the server after watching it."
+msgstr "Offer to delete an item from the server after watching it."
+
+msgctxt "#34037"
+msgid "Offer to delete episodes after watching."
+msgstr "Offer to delete episodes after watching."
+
+msgctxt "#34038"
+msgid "Offer to delete movies after watching."
+msgstr "Offer to delete movies after watching."
+
+msgctxt "#34039"
+msgid "Use the server's media segments to skip intros, credits and more."
+msgstr "Use the server's media segments to skip intros, credits and more."
+
+msgctxt "#34040"
+msgid "Pass the next episode to the Up Next add-on."
+msgstr "Pass the next episode to the Up Next add-on."
+
+msgctxt "#34041"
+msgid "What to do when an intro starts."
+msgstr "What to do when an intro starts."
+
+msgctxt "#34042"
+msgid "What to do when the credits start."
+msgstr "What to do when the credits start."
+
+msgctxt "#34043"
+msgid "What to do when a recap starts."
+msgstr "What to do when a recap starts."
+
+msgctxt "#34044"
+msgid "What to do when a preview starts."
+msgstr "What to do when a preview starts."
+
+msgctxt "#34045"
+msgid "What to do when a commercial starts."
+msgstr "What to do when a commercial starts."
+
+msgctxt "#34046"
+msgid "Add Jellyfin entries to Kodi's context menu."
+msgstr "Add Jellyfin entries to Kodi's context menu."
+
+msgctxt "#34047"
+msgid "Add an entry to play an item transcoded."
+msgstr "Add an entry to play an item transcoded."
+
+msgctxt "#34048"
+msgid "Add an entry to delete an item from the server."
+msgstr "Add an entry to delete an item from the server."
+
+msgctxt "#34049"
+msgid "Delete without asking for confirmation."
+msgstr "Delete without asking for confirmation."
+
+msgctxt "#34050"
+msgid "Comma-separated users added to each playback, so their progress is saved too."
+msgstr "Comma-separated users added to each playback, so their progress is saved too."
+
+msgctxt "#34051"
+msgid "Show a notification when connected to the server."
+msgstr "Show a notification when connected to the server."
+
+msgctxt "#34052"
+msgid "Show a notification when the server goes offline."
+msgstr "Show a notification when the server goes offline."
+
+msgctxt "#34053"
+msgid "Show a notification when the server restarts."
+msgstr "Show a notification when the server restarts."
+
+msgctxt "#34054"
+msgid "Seconds to show messages sent from the Jellyfin dashboard."
+msgstr "Seconds to show messages sent from the Jellyfin dashboard."
+
+msgctxt "#34055"
+msgid "Show a progress bar when syncing more updates than this."
+msgstr "Show a progress bar when syncing more updates than this."
+
+msgctxt "#34056"
+msgid "Show a notification for items newly added to the library."
+msgstr "Show a notification for items newly added to the library."
+
+msgctxt "#34057"
+msgid "Seconds to show the notification for new videos."
+msgstr "Seconds to show the notification for new videos."
+
+msgctxt "#34058"
+msgid "Seconds to show the notification for new music."
+msgstr "Seconds to show the notification for new music."
+
+msgctxt "#34059"
+msgid "Only list next episodes of shows played within this many days."
+msgstr "Only list next episodes of shows played within this many days."
+
+msgctxt "#34060"
+msgid "Leave specials (season 0) out of next episodes."
+msgstr "Leave specials (season 0) out of next episodes."
+
+msgctxt "#34061"
+msgid "Load cast and crew in add-on listings. Makes them slower."
+msgstr "Load cast and crew in add-on listings. Makes them slower."
+
+msgctxt "#34062"
+msgid "Allow other Jellyfin apps to control playback on this device."
+msgstr "Allow other Jellyfin apps to control playback on this device."
+
+msgctxt "#34063"
+msgid "How much the add-on writes to the Kodi log."
+msgstr "How much the add-on writes to the Kodi log."
+
+msgctxt "#34064"
+msgid "Replace server addresses and tokens in the add-on's log lines."
+msgstr "Replace server addresses and tokens in the add-on's log lines."
+
+msgctxt "#34065"
+msgid "Remove all Jellyfin data from Kodi's library and sync it again."
+msgstr "Remove all Jellyfin data from Kodi's library and sync it again."
+
+msgctxt "#34066"
+msgid "Appear as a new device in Jellyfin, e.g. after cloning this setup."
+msgstr "Appear as a new device in Jellyfin, e.g. after cloning this setup."
+
+msgctxt "#34067"
+msgid "Turn the add-on's background service on or off."
+msgstr "Turn the add-on's background service on or off."
+
+msgctxt "#34068"
+msgid "Restart the add-on's background service."
+msgstr "Restart the add-on's background service."
+
+msgctxt "#34069"
+msgid "Seconds to wait after Kodi starts before connecting to the server."
+msgstr "Seconds to wait after Kodi starts before connecting to the server."
+
+msgctxt "#34070"
+msgid "Folder for backups of the add-on data and Kodi databases."
+msgstr "Folder for backups of the add-on data and Kodi databases."
+
+msgctxt "#34071"
+msgid "Back up the add-on data and Kodi databases to the backup folder."
+msgstr "Back up the add-on data and Kodi databases to the backup folder."
+
 #. Reserved: 33257, 33258 and 33260
 #. These are currently translated and
 #. reusing them would require removal
