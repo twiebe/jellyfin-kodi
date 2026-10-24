@@ -69,10 +69,6 @@ msgctxt "#30116"
 msgid "For Movies"
 msgstr "For Movies"
 
-msgctxt "#30157"
-msgid "Enable enhanced artwork (i.e. cover art)"
-msgstr "Enable enhanced artwork (i.e. cover art)"
-
 msgctxt "#30160"
 msgid "Max stream bitrate"
 msgstr "Max stream bitrate"
@@ -1261,7 +1257,7 @@ msgctxt "#33269"
 msgid "Enable UpNext add-on integration"
 msgstr "Enable UpNext add-on integration"
 
-#. Reserved: 33257, 33258 and 33260
+#. Reserved: 30157, 33257, 33258 and 33260
 #. These are currently translated and
 #. reusing them would require removal
 #. across all language files.
