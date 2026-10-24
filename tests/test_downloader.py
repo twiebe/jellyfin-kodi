@@ -138,3 +138,34 @@ def test_no_requests_after_a_failed_page(server, monkeypatch):
     assert isinstance(_run(_fetch), ServerResponseException)
     # Both workers fetch a page, then wait on the semaphore for a free slot
     assert sorted(server["requested"], key=str) == [0, 1, "count"]
+
+
+def test_items_by_ids_in_pages(server, monkeypatch):
+    requested = []
+
+    def fake_get(handler, params=None, server_id=None):
+        requested.append(params["Ids"])
+        return _page(*params["Ids"].split(","))
+
+    monkeypatch.setattr(downloader, "_get", fake_get)
+    pages = list(downloader.get_items_by_ids("lib", "Movie", ["a", "b", "c"]))
+
+    assert requested == ["a,b", "c"]
+    assert [(page["StartIndex"], page["TotalRecordCount"]) for page in pages] == [
+        (0, 3),
+        (2, 3),
+    ]
+
+
+def test_failed_page_by_ids_raises(server, monkeypatch):
+    monkeypatch.setattr(downloader, "_get", lambda *args, **kwargs: None)
+    with pytest.raises(ServerResponseException):
+        list(downloader.get_items_by_ids("lib", "Movie", ["a"]))
+
+
+def test_basic_items_in_big_pages(server):
+    server["count"] = {"TotalRecordCount": 600}
+    server[0] = _page("a")
+    server[500] = _page("b")
+    list(downloader.get_items("lib", "Movie", basic=True))
+    assert sorted(server["requested"], key=str) == [0, 500, "count"]
