@@ -31,6 +31,9 @@ class JellyfinDatabase:
     def update_reference(self, *args):
         self.cursor.execute(QU.update_reference, args)
 
+    def update_sync_checksum(self, *args):
+        self.cursor.execute(QU.update_sync_checksum, args)
+
     def update_parent_id(self, *args):
         """Parent_id is the parent Kodi id."""
         self.cursor.execute(QU.update_parent, args)

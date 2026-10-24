@@ -320,18 +320,19 @@ class FullSync(object):
     def movies(self, library, dialog):
         """Process movies from a single library."""
         processed_ids = []
+        changed_ids = None
 
-        for items in server.get_items(
-            library["Id"], "Movie", False, self.sync["RestorePoint"].get("params")
-        ):
+        if self.update_library:
+            changed = self.changed_items(library, "Movie", Movies, processed_ids)
+            changed_ids = self.fetch_by_id(changed, processed_ids)
+
+        for items, start_index in self.pages(library, "Movie", changed_ids):
 
             with self.video_database_locks() as (videodb, jellyfindb):
                 obj = Movies(
                     self.server, jellyfindb, videodb, self.direct_path, library
                 )
-
-                self.sync["RestorePoint"] = items["RestorePoint"]
-                start_index = items["RestorePoint"]["params"]["StartIndex"]
+                obj.skip_unchanged = self.update_library
 
                 for index, movie in enumerate(items["Items"]):
 
@@ -356,6 +357,58 @@ class FullSync(object):
             if self.update_library:
                 self.movies_compare(library, obj, jellyfindb)
 
+    def pages(self, library, item_type, changed_ids=None):
+        """Yield the pages of a library sync with the index of their first
+        item. With changed_ids, only these items are fetched.
+        """
+        if changed_ids is not None:
+            for items in server.get_items_by_ids(library["Id"], item_type, changed_ids):
+                yield items, items["StartIndex"]
+
+            return
+
+        for items in server.get_items(
+            library["Id"], item_type, False, self.sync["RestorePoint"].get("params")
+        ):
+            self.sync["RestorePoint"] = items["RestorePoint"]
+            yield items, items["RestorePoint"]["params"]["StartIndex"]
+
+    def fetch_by_id(self, changed, unchanged_ids):
+        """The ids of the changed items to fetch, None to fetch all items.
+        Fetching items by id is slower per item, it only pays off when most
+        items didn't change.
+        """
+        if len(changed) > len(unchanged_ids):
+            return None
+
+        return [item["Id"] for item in changed]
+
+    def changed_items(self, library, item_types, obj_class, unchanged_ids):
+        """Update sync: the items that changed since they were synced, in
+        the short version with only the Etag and the user data. The ids of
+        the other ones are added to unchanged_ids.
+        """
+        changed = []
+
+        with self.video_database_locks() as (videodb, jellyfindb):
+            obj = obj_class(self.server, jellyfindb, videodb, self.direct_path, library)
+
+            for items in server.get_items(library["Id"], item_types, basic=True):
+                for item in items["Items"]:
+                    if obj.unchanged(item):
+                        unchanged_ids.append(item["Id"])
+                    else:
+                        changed.append(item)
+
+        LOG.info(
+            "%s of %s items changed in %s",
+            len(changed),
+            len(changed) + len(unchanged_ids),
+            library["Name"],
+        )
+
+        return changed
+
     def movies_compare(self, library, obj, jellyfinydb):
         """Compare entries from library to what's in the jellyfindb. Remove surplus"""
         db = jellyfin_db.JellyfinDatabase(jellyfinydb.cursor)
@@ -371,18 +424,28 @@ class FullSync(object):
     def tvshows(self, library, dialog):
         """Process tvshows and episodes from a single library."""
         processed_ids = []
+        changed_ids = None
 
-        for items in server.get_items(
-            library["Id"], "Series", False, self.sync["RestorePoint"].get("params")
-        ):
+        if self.update_library:
+            # A show is synced again when it, a season or an episode changed
+            changed = self.changed_items(
+                library, "Series,Season,Episode", TVShows, processed_ids
+            )
+            changed_ids = list(
+                {
+                    item["Id"] if item["Type"] == "Series" else item.get("SeriesId")
+                    for item in changed
+                }
+                - {None}
+            )
+
+        for items, start_index in self.pages(library, "Series", changed_ids):
 
             with self.video_database_locks() as (videodb, jellyfindb):
                 obj = TVShows(
                     self.server, jellyfindb, videodb, self.direct_path, library, True
                 )
-
-                self.sync["RestorePoint"] = items["RestorePoint"]
-                start_index = items["RestorePoint"]["params"]["StartIndex"]
+                obj.skip_unchanged = self.update_library
 
                 for index, show in enumerate(items["Items"]):
 
@@ -436,18 +499,21 @@ class FullSync(object):
     def musicvideos(self, library, dialog):
         """Process musicvideos from a single library."""
         processed_ids = []
+        changed_ids = None
 
-        for items in server.get_items(
-            library["Id"], "MusicVideo", False, self.sync["RestorePoint"].get("params")
-        ):
+        if self.update_library:
+            changed = self.changed_items(
+                library, "MusicVideo", MusicVideos, processed_ids
+            )
+            changed_ids = self.fetch_by_id(changed, processed_ids)
+
+        for items, start_index in self.pages(library, "MusicVideo", changed_ids):
 
             with self.video_database_locks() as (videodb, jellyfindb):
                 obj = MusicVideos(
                     self.server, jellyfindb, videodb, self.direct_path, library
                 )
-
-                self.sync["RestorePoint"] = items["RestorePoint"]
-                start_index = items["RestorePoint"]["params"]["StartIndex"]
+                obj.skip_unchanged = self.update_library
 
                 for index, mvideo in enumerate(items["Items"]):
 

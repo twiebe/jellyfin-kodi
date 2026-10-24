@@ -118,6 +118,8 @@ class Objects(object):
                 "%sProviderName" % mapping_name
             )
             self.mapped_item["Checksum"] = json.dumps(item["UserData"])
+            # The Etag changes whenever the server saves the item
+            self.mapped_item["Etag"] = item.get("Etag")
 
         return self.mapped_item
 
