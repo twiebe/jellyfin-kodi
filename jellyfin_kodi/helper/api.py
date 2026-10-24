@@ -12,6 +12,39 @@ from . import settings, LazyLogger
 
 LOG = LazyLogger(__name__)
 
+# Reading a setting takes about a millisecond, too slow to do for every
+# item of a sync. The service resets this when the settings change.
+_art_query = None
+
+
+def art_query():
+    """Image query parameters from the artwork settings."""
+    global _art_query
+
+    if _art_query is None:
+        query = ""
+
+        if settings("compressArt.bool"):
+            query = "&Quality=90"
+
+        if not settings("enableCoverArt.bool"):
+            query += "&EnableImageEnhancers=false"
+
+        art_maxheight = [360, 480, 600, 720, 1080, -1]
+        maxheight = art_maxheight[int(settings("maxArtResolution") or 5)]
+        if maxheight != -1:
+            query += "&MaxHeight=%d" % maxheight
+
+        _art_query = query
+
+    return _art_query
+
+
+def reset_art_query():
+    global _art_query
+    _art_query = None
+
+
 ##################################################################################################
 
 
@@ -277,7 +310,7 @@ class API(object):
 
         obj is from objects.Objects().map(item, 'Artwork')
         """
-        query = ""
+        query = art_query()
         all_artwork = {
             "Primary": "",
             "BoxRear": "",
@@ -288,17 +321,6 @@ class API(object):
             "Disc": "",
             "Backdrop": [],
         }
-
-        if settings("compressArt.bool"):
-            query = "&Quality=90"
-
-        if not settings("enableCoverArt.bool"):
-            query += "&EnableImageEnhancers=false"
-
-        art_maxheight = [360, 480, 600, 720, 1080, -1]
-        maxheight = art_maxheight[int(settings("maxArtResolution") or 5)]
-        if maxheight != -1:
-            query += "&MaxHeight=%d" % maxheight
 
         all_artwork["Backdrop"] = self.get_backdrops(
             obj["Id"], obj["BackdropTags"] or [], query
