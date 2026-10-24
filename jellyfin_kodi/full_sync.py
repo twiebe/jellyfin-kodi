@@ -361,7 +361,7 @@ class FullSync(object):
         db = jellyfin_db.JellyfinDatabase(jellyfinydb.cursor)
 
         items = db.get_item_by_media_folder(library["Id"])
-        current = obj.item_ids
+        current = set(obj.item_ids)
 
         for x in items:
             if x[0] not in current and x[1] == "Movie":
@@ -426,7 +426,7 @@ class FullSync(object):
         for x in list(items):
             items.extend(obj.get_child(x[0]))
 
-        current = obj.item_ids
+        current = set(obj.item_ids)
 
         for x in items:
             if x[0] not in current and x[1] == "Series":
@@ -478,7 +478,7 @@ class FullSync(object):
         db = jellyfin_db.JellyfinDatabase(jellyfindb.cursor)
 
         items = db.get_item_by_media_folder(library["Id"])
-        current = obj.item_ids
+        current = set(obj.item_ids)
 
         for x in items:
             if x[0] not in current and x[1] == "MusicVideo":
@@ -564,7 +564,7 @@ class FullSync(object):
         for x in list(items):
             items.extend(obj.get_child(x[0]))
 
-        current = obj.item_ids
+        current = set(obj.item_ids)
 
         for x in items:
             if x[0] not in current and x[1] == "MusicArtist":
