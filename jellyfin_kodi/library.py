@@ -152,6 +152,9 @@ class Library(threading.Thread):
         self.writer_threads["removed"] = [
             thread for thread in self.writer_threads["removed"] if not thread.is_done
         ]
+        self.notify_threads = [
+            thread for thread in self.notify_threads if not thread.is_done
+        ]
 
         if (
             not self.player.isPlayingVideo()
