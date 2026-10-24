@@ -53,13 +53,17 @@ def progress(message=None):
     return decorator
 
 
+# One monitor for all checks: creating one for every synced item is slow
+monitor = xbmc.Monitor()
+
+
 def stop(func):
     """Wrapper to catch exceptions and return using catch"""
 
     @wraps(func)
     def wrapper(*args, **kwargs):
 
-        if xbmc.Monitor().waitForAbort(0.00001):
+        if monitor.abortRequested():
             raise LibraryExitException("Kodi aborted, exiting...")
 
         if window("jellyfin_should_stop.bool"):
