@@ -46,9 +46,6 @@ class ServiceManager(threading.Thread):
                 if "ExitService" not in str(error):
                     service.shutdown()
 
-                if "RestartService" in str(error):
-                    service.reload_objects()
-
             self.exception = error
 
 

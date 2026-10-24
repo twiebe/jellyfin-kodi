@@ -5,7 +5,6 @@
 import json
 import sys
 from datetime import datetime
-from importlib import reload
 import threading
 
 # Workaround for threads using datetime: _striptime is locked
@@ -467,40 +466,6 @@ class Service(xbmc.Monitor):
 
             if not self.settings["kodi_companion"]:
                 dialog("ok", "{jellyfin}", translate(33138))
-
-    def reload_objects(self):
-        """Reload objects which depends on the patch module.
-        This allows to see the changes in code without restarting the python interpreter.
-        """
-        reload_modules = [
-            "objects.movies",
-            "objects.musicvideos",
-            "objects.tvshows",
-            "objects.music",
-            "objects.obj",
-            "objects.actions",
-            "objects.kodi.kodi",
-            "objects.kodi.movies",
-            "objects.kodi.musicvideos",
-            "objects.kodi.tvshows",
-            "objects.kodi.music",
-            "objects.kodi.artwork",
-            "objects.kodi.queries",
-            "objects.kodi.queries_music",
-            "objects.kodi.queries_texture",
-        ]
-
-        for mod in reload_modules:
-            del sys.modules[mod]
-
-        reload(objects.kodi)
-        reload(objects)
-        reload(library)
-        reload(monitor)
-
-        objects.obj.Objects().mapping()
-
-        LOG.info("---[ objects reloaded ]")
 
     def shutdown(self):
         LOG.debug("Running threads:")
