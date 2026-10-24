@@ -243,16 +243,17 @@ class Service(xbmc.Monitor):
             if self.warn or data.get("ServerId"):
 
                 self.warn = data.get("ServerId") is not None
-                dialog(
-                    "notification",
-                    heading="{jellyfin}",
-                    message=(
-                        translate(33146)
-                        if data.get("ServerId") is None
-                        else translate(33149)
-                    ),
-                    icon=xbmcgui.NOTIFICATION_ERROR,
-                )
+                if settings("offlinetMsg.bool"):
+                    dialog(
+                        "notification",
+                        heading="{jellyfin}",
+                        message=(
+                            translate(33146)
+                            if data.get("ServerId") is None
+                            else translate(33149)
+                        ),
+                        icon=xbmcgui.NOTIFICATION_ERROR,
+                    )
 
             if data.get("ServerId") is None:
                 self.stop_default()
