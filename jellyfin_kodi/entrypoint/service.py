@@ -30,6 +30,7 @@ from ..helper import (
     set_addon_mode,
     LazyLogger,
 )
+from ..helper import api
 from ..helper.utils import JsonDebugPrinter
 from ..helper.xmls import verify_kodi_defaults
 from ..jellyfin import Jellyfin
@@ -421,6 +422,8 @@ class Service(xbmc.Monitor):
         """React to setting changes that impact window values."""
         if window("jellyfin_should_stop.bool"):
             return
+
+        api.reset_art_query()
 
         if settings("logLevel") != self.settings["log_level"]:
 
