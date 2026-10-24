@@ -25,9 +25,7 @@ def server(monkeypatch):
 
     monkeypatch.setattr(downloader, "_get", fake_get)
     # Let @stop pass: Kodi running, server online
-    monkeypatch.setattr(
-        wrapper.xbmc.Monitor, "waitForAbort", lambda self, timeout: False
-    )
+    monkeypatch.setattr(wrapper.monitor, "abortRequested", lambda: False)
     monkeypatch.setattr(wrapper, "window", lambda key: key == "jellyfin_online.bool")
     monkeypatch.setattr(
         downloader, "settings", {"limitIndex": "2", "limitThreads": "1"}.get
