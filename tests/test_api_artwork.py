@@ -9,7 +9,6 @@ from jellyfin_kodi.helper import api
 def settings(monkeypatch):
     values = {
         "compressArt.bool": False,
-        "enableCoverArt.bool": True,
         "maxArtResolution": "3",
     }
     reads = []
@@ -28,14 +27,14 @@ def test_query_follows_settings(settings):
     values, _ = settings
     assert api.art_query() == "&MaxHeight=720"
 
-    values.update({"compressArt.bool": True, "enableCoverArt.bool": False})
+    values.update({"compressArt.bool": True})
     values["maxArtResolution"] = "5"
     api.reset_art_query()
-    assert api.art_query() == "&Quality=90&EnableImageEnhancers=false"
+    assert api.art_query() == "&Quality=90"
 
 
 def test_settings_are_read_once(settings):
     _, reads = settings
     for _ in range(100):
         api.art_query()
-    assert len(reads) == 3
+    assert len(reads) == 2

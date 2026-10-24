@@ -69,10 +69,6 @@ msgctxt "#30116"
 msgid "For Movies"
 msgstr "For Movies"
 
-msgctxt "#30157"
-msgid "Enable enhanced artwork (i.e. cover art)"
-msgstr "Enable enhanced artwork (i.e. cover art)"
-
 msgctxt "#30160"
 msgid "Max stream bitrate"
 msgstr "Max stream bitrate"
@@ -1313,10 +1309,6 @@ msgctxt "#34012"
 msgid "Parallel downloads during sync. Lower it on weak devices or servers."
 msgstr "Parallel downloads during sync. Lower it on weak devices or servers."
 
-msgctxt "#34013"
-msgid "No effect on Jellyfin 10.5 and newer, which removed image enhancers."
-msgstr "No effect on Jellyfin 10.5 and newer, which removed image enhancers."
-
 msgctxt "#34014"
 msgid "Request artwork at quality 90 instead of 100. Saves a little bandwidth."
 msgstr "Request artwork at quality 90 instead of 100. Saves a little bandwidth."
@@ -1549,10 +1541,10 @@ msgctxt "#34071"
 msgid "Back up the add-on data and Kodi databases to the backup folder."
 msgstr "Back up the add-on data and Kodi databases to the backup folder."
 
-#. Reserved: 33257, 33258 and 33260
+#. Reserved: 30157, 33257, 33258 and 33260
 #. These are currently translated and
 #. reusing them would require removal
 #. across all language files.
-#. Unused: 33263, 33266, 33267, 33268
+#. Unused: 33263, 33266, 33267, 33268, 34013
 #. Please use these next and remove from
 #. this list.
