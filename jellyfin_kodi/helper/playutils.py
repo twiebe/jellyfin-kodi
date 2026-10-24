@@ -265,9 +265,10 @@ class PlayUtils(object):
                 if "AudioBitrate" not in p and "VideoBitrate" not in p
             ]
 
-            if settings("skipDialogTranscode") != Transcode.Enabled and source.get(
-                "MediaStreams"
-            ):
+            skip_dialog = int(settings("skipDialogTranscode") or 0)
+            # Disabled keeps the tracks the server chose, every other mode
+            # picks them here (dialog or media default)
+            if skip_dialog != Transcode.Disabled and source.get("MediaStreams"):
                 # manual tracks
                 url_parsed = [
                     p
