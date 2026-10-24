@@ -305,8 +305,11 @@ class ConnectionManager(object):
                     server, credentials, system_info, False, options
                 )
 
-            server["UserId"] = None
-            server["AccessToken"] = None
+            # Only a 401 means the token is invalid. Keep it on server errors
+            # or an access schedule (403), or the user has to sign in again.
+            if system_info["Status_Code"] == 401:
+                server["UserId"] = None
+                server["AccessToken"] = None
             system_info["State"] = CONNECTION_STATE["Unavailable"]
             return system_info
 
