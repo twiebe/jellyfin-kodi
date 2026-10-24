@@ -292,9 +292,6 @@ class API(object):
         if settings("compressArt.bool"):
             query = "&Quality=90"
 
-        if not settings("enableCoverArt.bool"):
-            query += "&EnableImageEnhancers=false"
-
         art_maxheight = [360, 480, 600, 720, 1080, -1]
         maxheight = art_maxheight[int(settings("maxArtResolution") or 5)]
         if maxheight != -1:
