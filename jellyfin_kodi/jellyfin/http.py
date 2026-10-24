@@ -85,13 +85,13 @@ class HTTP(object):
         data = self._request(data)
         LOG.debug("--->[ http ] %s", JsonDebugPrinter(data))
         retry = data.pop("retry", 5)
+        # Taken out once, a retry must use the same method
+        action = data.pop("type", "GET")
 
         while True:
 
             try:
-                r = self._requests(
-                    session or self.session or requests, data.pop("type", "GET"), **data
-                )
+                r = self._requests(session or self.session or requests, action, **data)
                 r.content  # release the connection
 
                 if not self.keep_alive and self.session is not None:
