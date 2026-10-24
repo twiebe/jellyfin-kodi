@@ -187,18 +187,22 @@ def jellyfin_tables(cursor):
     cursor.execute("""CREATE TABLE IF NOT EXISTS jellyfin(
         jellyfin_id TEXT UNIQUE, media_folder TEXT, jellyfin_type TEXT, media_type TEXT,
         kodi_id INTEGER, kodi_fileid INTEGER, kodi_pathid INTEGER, parent_id INTEGER,
-        checksum INTEGER, jellyfin_parent_id TEXT)""")
+        checksum INTEGER, jellyfin_parent_id TEXT, sync_checksum TEXT)""")
     cursor.execute("""CREATE TABLE IF NOT EXISTS view(
         view_id TEXT UNIQUE, view_name TEXT, media_type TEXT)""")
     cursor.execute("CREATE TABLE IF NOT EXISTS version(idVersion TEXT)")
 
     columns = cursor.execute("SELECT * FROM jellyfin")
-    if "jellyfin_parent_id" not in [
-        description[0] for description in columns.description
-    ]:
+    names = [description[0] for description in columns.description]
+    if "jellyfin_parent_id" not in names:
 
         LOG.debug("Add missing column jellyfin_parent_id")
         cursor.execute("ALTER TABLE jellyfin ADD COLUMN jellyfin_parent_id 'TEXT'")
+
+    if "sync_checksum" not in names:
+
+        LOG.debug("Add missing column sync_checksum")
+        cursor.execute("ALTER TABLE jellyfin ADD COLUMN sync_checksum TEXT")
 
 
 def reset():

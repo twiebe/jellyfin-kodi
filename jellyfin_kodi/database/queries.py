@@ -1,6 +1,6 @@
 get_item = """
 SELECT      kodi_id, kodi_fileid, kodi_pathid, parent_id, media_type,
-            jellyfin_type, media_folder, jellyfin_parent_id
+            jellyfin_type, media_folder, jellyfin_parent_id, sync_checksum
 FROM        jellyfin
 WHERE       jellyfin_id = ?
 """
@@ -227,6 +227,12 @@ SET         checksum = ?
 WHERE       jellyfin_id = ?
 """
 update_reference_obj = ["{Checksum}", "{Id}"]
+update_sync_checksum = """
+UPDATE      jellyfin
+SET         sync_checksum = ?
+WHERE       jellyfin_id = ?
+"""
+update_sync_checksum_obj = ["{SyncChecksum}", "{Id}"]
 update_parent = """
 UPDATE      jellyfin
 SET         parent_id = ?

@@ -23,6 +23,7 @@ from ..helper.utils import convert_to_date, find_library
 from ..helper.exceptions import PathValidationException
 
 from .obj import Objects
+from .utils import sync_checksum
 from .kodi import TVShows as KodiDb, queries as QU
 
 ##################################################################################################
@@ -53,6 +54,8 @@ class TVShows(KodiDb):
         self.jellyfin_db = jellyfin_db.JellyfinDatabase(jellyfindb.cursor)
         self.objects = Objects()
         self.item_ids = []
+        # Set by the update sync: don't rewrite items that didn't change
+        self.skip_unchanged = False
         self.library = library
 
         KodiDb.__init__(self, videodb.cursor)
@@ -131,19 +134,13 @@ class TVShows(KodiDb):
             tags.append("Favorite tvshows")
 
         obj["Tags"] = tags
+        obj["SyncChecksum"] = self.checksum(obj, obj["LibraryName"])
 
-        if update:
-            self.tvshow_update(obj)
-        else:
-            self.tvshow_add(obj)
+        # Seasons and episodes are still processed, they have checksums of
+        # their own
+        if not (update and self.skip_unchanged and e_item[8] == obj["SyncChecksum"]):
+            self.tvshow_write(obj, update)
 
-        self.link(*values(obj, QU.update_tvshow_link_obj))
-        self.update_path(*values(obj, QU.update_path_tvshow_obj))
-        self.add_tags(*values(obj, QU.add_tags_tvshow_obj))
-        self.add_people(*values(obj, QU.add_people_tvshow_obj))
-        self.add_genres(*values(obj, QU.add_genres_tvshow_obj))
-        self.add_studios(*values(obj, QU.add_studios_tvshow_obj))
-        self.artwork.add(obj["Artwork"], obj["ShowId"], "tvshow")
         self.item_ids.append(obj["Id"])
 
         season_episodes = {}
@@ -187,6 +184,51 @@ class TVShows(KodiDb):
 
                 for episode in episodes["Items"]:
                     self.episode(episode)
+
+    def checksum(self, obj, *settings):
+        return sync_checksum(obj, api.art_query(), self.direct_path, *settings)
+
+    @jellyfin_item
+    def unchanged(self, item, e_item):
+        """Whether the show, season or episode is in Kodi as it is on the
+        server. Only needs the Etag and the user data of the item.
+        """
+        if e_item is None:
+            return False
+
+        if item["Type"] == "Season":
+            # Seasons are only added, never updated
+            return True
+
+        if item["Type"] == "Series":
+            obj = self.objects.map(item, "Series")
+            obj["ShowId"] = e_item[0]
+            checksum = self.checksum(obj, self.jellyfin_db.get_view_name(e_item[6]))
+            kodi_item = self.get(*values(obj, QU.get_tvshow_obj))
+        else:
+            obj = self.objects.map(item, "Episode")
+            obj["EpisodeId"] = e_item[0]
+            checksum = self.checksum(obj)
+            kodi_item = self.get_episode(*values(obj, QU.get_episode_obj))
+
+        return e_item[8] == checksum and kodi_item is not None
+
+    def tvshow_write(self, obj, update):
+        if update:
+            self.tvshow_update(obj)
+        else:
+            self.tvshow_add(obj)
+
+        self.link(*values(obj, QU.update_tvshow_link_obj))
+        self.update_path(*values(obj, QU.update_path_tvshow_obj))
+        self.add_tags(*values(obj, QU.add_tags_tvshow_obj))
+        self.add_people(*values(obj, QU.add_people_tvshow_obj))
+        self.add_genres(*values(obj, QU.add_genres_tvshow_obj))
+        self.add_studios(*values(obj, QU.add_studios_tvshow_obj))
+        self.artwork.add(obj["Artwork"], obj["ShowId"], "tvshow")
+        self.jellyfin_db.update_sync_checksum(
+            *values(obj, QUEM.update_sync_checksum_obj)
+        )
 
     def tvshow_add(self, obj):
         """Add object to kodi."""
@@ -380,6 +422,13 @@ class TVShows(KodiDb):
                     obj["EpisodeId"],
                 )
 
+        obj["SyncChecksum"] = self.checksum(obj)
+
+        if update and self.skip_unchanged and e_item[8] == obj["SyncChecksum"]:
+            self.item_ids.append(obj["Id"])
+
+            return False
+
         obj["Path"] = API.get_file_path(obj["Path"])
         obj["Index"] = obj["Index"] or -1
         obj["Writers"] = " / ".join(obj["Writers"] or [])
@@ -440,6 +489,9 @@ class TVShows(KodiDb):
         self.add_playstate(*values(obj, QU.add_bookmark_obj))
         self.artwork.update(
             obj["Artwork"]["Primary"], obj["EpisodeId"], "episode", "thumb"
+        )
+        self.jellyfin_db.update_sync_checksum(
+            *values(obj, QUEM.update_sync_checksum_obj)
         )
         self.item_ids.append(obj["Id"])
 
