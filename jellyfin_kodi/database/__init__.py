@@ -16,6 +16,7 @@ from . import jellyfin_db
 from ..helper import translate, settings, window, dialog
 from ..objects import obj
 from ..helper import LazyLogger
+from ..helper.exceptions import LibraryExitException
 
 #################################################################################################
 
@@ -167,10 +168,17 @@ class Database(object):
         """Close the connection and cursor."""
         changes = self.conn.total_changes
 
-        if exc_type is not None:  # errors raised
-            LOG.error("type: %s value: %s", exc_type, exc_val)
+        # Stopping (Kodi exits, server offline) happens between items: keep
+        # the finished ones. The music sync has no restore point.
+        failed = exc_type is not None and not issubclass(exc_type, LibraryExitException)
 
-        if self.commit_close and changes:
+        if failed:
+            LOG.error("type: %s value: %s", exc_type, exc_val)
+            # Don't keep half written items, e.g. Kodi entries without the
+            # jellyfin entry that maps them; a resumed sync adds them again
+            self.conn.rollback()
+
+        elif self.commit_close and changes:
 
             LOG.debug("[%s] %s rows updated.", self.db_file, changes)
             self.conn.commit()
