@@ -13,7 +13,7 @@ import requests
 from .helper import settings, stop, window, LazyLogger
 from .jellyfin import Jellyfin
 from .jellyfin import api
-from .helper.exceptions import HTTPException
+from .helper.exceptions import HTTPException, ServerResponseException
 
 #################################################################################################
 
@@ -212,9 +212,10 @@ def _get_items(query, server_id=None):
         test_params["Limit"] = 1
         test_params["EnableTotalRecordCount"] = True
 
-        items["TotalRecordCount"] = _get(url, test_params, server_id=server_id)[
-            "TotalRecordCount"
-        ]
+        result = _get(url, test_params, server_id=server_id) or {}
+        if "TotalRecordCount" not in result:
+            raise ServerResponseException("No item count in the response")
+        items["TotalRecordCount"] = result["TotalRecordCount"]
 
     except Exception as error:
         LOG.exception(
@@ -223,6 +224,9 @@ def _get_items(query, server_id=None):
             error,
             params,
         )
+        # Yielding nothing would look like an empty library, and the full
+        # sync removes every local item it did not receive
+        raise
 
     else:
         params.setdefault("StartIndex", 0)
@@ -248,10 +252,13 @@ def _get_items(query, server_id=None):
 
             # semaphore to avoid fetching complete library to memory
             thread_buffer = threading.Semaphore(dthreads)
+            stopped = threading.Event()
 
             # wrapper function for _get that uses a semaphore
             def get_wrapper(params):
                 thread_buffer.acquire()
+                if stopped.is_set():
+                    return None
                 return _get(url, params, server_id=server_id)
 
             # create jobs
@@ -260,35 +267,50 @@ def _get_items(query, server_id=None):
                 # the query params are later needed again
                 jobs[job] = param
 
-            # process complete jobs
-            for job in concurrent.futures.as_completed(jobs):
-                # get the result
-                result = job.result() or {"Items": []}
-                query["params"] = jobs[job]
-
-                # free job memory
-                del jobs[job]
-                del job
-
-                # Mitigates #216 till the server validates the date provided is valid
-                if result["Items"][0].get("ProductionYear"):
-                    try:
-                        date(result["Items"][0]["ProductionYear"], 1, 1)
-                    except ValueError:
-                        LOG.info(
-                            "#216 mitigation triggered. Setting ProductionYear to None"
+            try:
+                # process complete jobs
+                for job in concurrent.futures.as_completed(jobs):
+                    # get the result
+                    result = job.result()
+                    query["params"] = jobs[job]
+                    if not result or "Items" not in result:
+                        raise ServerResponseException(
+                            "No items in the response %s params:%s"
+                            % (url, query["params"])
                         )
-                        result["Items"][0]["ProductionYear"] = None
 
-                items["Items"].extend(result["Items"])
-                # Using items to return data and communicate a restore point back to the callee is
-                # a violation of the SRP. TODO: Separate responsibilities.
-                items["RestorePoint"] = query
-                yield items
-                del items["Items"][:]
+                    # free job memory
+                    del jobs[job]
+                    del job
 
-                # release the semaphore again
-                thread_buffer.release()
+                    # Mitigates #216 till the server validates the date provided is valid
+                    if result["Items"] and result["Items"][0].get("ProductionYear"):
+                        try:
+                            date(result["Items"][0]["ProductionYear"], 1, 1)
+                        except ValueError:
+                            LOG.info(
+                                "#216 mitigation triggered. Setting ProductionYear to None"
+                            )
+                            result["Items"][0]["ProductionYear"] = None
+
+                    items["Items"].extend(result["Items"])
+                    # Using items to return data and communicate a restore point back to the callee is
+                    # a violation of the SRP. TODO: Separate responsibilities.
+                    items["RestorePoint"] = query
+                    yield items
+                    del items["Items"][:]
+
+                    # release the semaphore again
+                    thread_buffer.release()
+            finally:
+                # Unblock the workers, or leaving the pool waits forever for
+                # jobs stuck on the semaphore, e.g. after an error or when
+                # the caller stops iterating. Woken workers skip their request.
+                stopped.set()
+                for job in jobs:
+                    job.cancel()
+                for _ in range(dthreads):
+                    thread_buffer.release()
 
 
 class GetItemWorker(threading.Thread):

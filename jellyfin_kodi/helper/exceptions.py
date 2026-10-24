@@ -30,3 +30,7 @@ class PathValidationException(Exception):
 
     TODO: Investigate the usage of this to see if it can be done better.
     """
+
+
+class ServerResponseException(Exception):
+    "Raised when the server answered a request without the expected data."
