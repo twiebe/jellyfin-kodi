@@ -88,9 +88,9 @@ class Movies(KodiDb):
                     "MovieId %s missing from kodi. repairing the entry.", obj["MovieId"]
                 )
 
-        obj["Checksum"] = self.checksum(obj)
+        obj["SyncChecksum"] = self.checksum(obj)
 
-        if update and self.skip_unchanged and e_item[8] == obj["Checksum"]:
+        if update and self.skip_unchanged and e_item[8] == obj["SyncChecksum"]:
             self.item_ids.append(obj["Id"])
 
             return False
@@ -151,6 +151,9 @@ class Movies(KodiDb):
         self.add_people(*values(obj, QU.add_people_movie_obj))
         self.add_streams(*values(obj, QU.add_streams_obj))
         self.artwork.add(obj["Artwork"], obj["MovieId"], "movie")
+        self.jellyfin_db.update_sync_checksum(
+            *values(obj, QUEM.update_sync_checksum_obj)
+        )
         self.item_ids.append(obj["Id"])
 
         return not update
