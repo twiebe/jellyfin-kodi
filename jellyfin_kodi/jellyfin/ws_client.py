@@ -4,7 +4,6 @@
 
 import json
 import threading
-import time
 
 import xbmc
 
@@ -36,6 +35,8 @@ class WSClient(threading.Thread):
         self.client = client
         threading.Thread.__init__(self)
         self.keepalive = None
+        self.stopped = threading.Event()
+        self.lock = threading.Lock()
 
     def send(self, message, data=""):
 
@@ -93,7 +94,8 @@ class WSClient(threading.Thread):
     def on_open(self, ws):
         LOG.info("--->[ websocket opened ]")
         # Avoid a timing issue where the capabilities are not correctly registered
-        time.sleep(5)
+        if self.stopped.wait(5):
+            return
         if settings("remoteControl.bool"):
             self.client.jellyfin.post_capabilities(
                 {
@@ -117,8 +119,12 @@ class WSClient(threading.Thread):
             )
         if self.keepalive is not None:
             self.keepalive.stop()
-        self.keepalive = KeepAlive(self, ws)
-        self.keepalive.start()
+        # A keepalive started after stop_client would keep Kodi from exiting
+        with self.lock:
+            if self.stop:
+                return
+            self.keepalive = KeepAlive(self, ws)
+            self.keepalive.start()
 
     def on_message(self, ws, message):
 
@@ -137,12 +143,27 @@ class WSClient(threading.Thread):
 
     def stop_client(self):
 
-        self.stop = True
+        with self.lock:
+            self.stop = True
+            self.stopped.set()
+            keepalive = self.keepalive
 
-        if self.keepalive is not None:
-            self.keepalive.stop()
+        if keepalive is not None:
+            keepalive.stop()
 
         if self.wsc is not None:
+            # close() doesn't always wake up the thread waiting for data, it
+            # then sleeps in select() for up to 10 seconds. abort() shuts the
+            # socket down, so run_forever returns right away.
+            self.wsc.keep_running = False
+            sock = self.wsc.sock
+            if sock is not None:
+                sock.abort()
+            # The ping thread of the websocket library waits up to
+            # ping_interval for this event, Kodi waits for that thread
+            stop_ping = getattr(self.wsc, "stop_ping", None)
+            if stop_ping is not None:
+                stop_ping.set()
             self.wsc.close()
 
 
