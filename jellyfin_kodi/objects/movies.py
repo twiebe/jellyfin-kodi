@@ -21,6 +21,7 @@ from ..helper.utils import find_library
 from ..helper.exceptions import PathValidationException
 
 from .obj import Objects
+from .utils import sync_checksum
 from .kodi import Movies as KodiDb, queries as QU
 
 ##################################################################################################
@@ -42,6 +43,8 @@ class Movies(KodiDb):
         self.jellyfin_db = jellyfin_db.JellyfinDatabase(jellyfindb.cursor)
         self.objects = Objects()
         self.item_ids = []
+        # Set by the update sync: don't rewrite items that didn't change
+        self.skip_unchanged = False
         self.library = library
 
         KodiDb.__init__(self, videodb.cursor)
@@ -84,6 +87,13 @@ class Movies(KodiDb):
                 LOG.info(
                     "MovieId %s missing from kodi. repairing the entry.", obj["MovieId"]
                 )
+
+        obj["Checksum"] = self.checksum(obj)
+
+        if update and self.skip_unchanged and e_item[8] == obj["Checksum"]:
+            self.item_ids.append(obj["Id"])
+
+            return False
 
         obj["Path"] = API.get_file_path(obj["Path"])
         obj["Genres"] = obj["Genres"] or []
@@ -144,6 +154,26 @@ class Movies(KodiDb):
         self.item_ids.append(obj["Id"])
 
         return not update
+
+    def checksum(self, obj):
+        return sync_checksum(obj, api.art_query(), self.direct_path, obj["LibraryName"])
+
+    @jellyfin_item
+    def unchanged(self, item, e_item):
+        """Whether the movie is in Kodi as it is on the server. Only needs
+        the Etag and the user data of the item.
+        """
+        if e_item is None:
+            return False
+
+        obj = self.objects.map(item, "Movie")
+        obj["MovieId"] = e_item[0]
+        obj["LibraryName"] = self.jellyfin_db.get_view_name(e_item[6])
+
+        return (
+            e_item[8] == self.checksum(obj)
+            and self.get(*values(obj, QU.get_movie_obj)) is not None
+        )
 
     def movie_add(self, obj):
         """Add object to kodi."""

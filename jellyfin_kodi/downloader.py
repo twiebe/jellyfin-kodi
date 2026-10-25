@@ -164,8 +164,43 @@ def get_items(parent_id, item_type=None, basic=False, params=None):
     if params:
         query["params"].update(params)
 
+    if basic:
+        # Without the extra fields the server answers big pages quickly
+        query["page_size"] = 500
+
     for items in _get_items(query):
         yield items
+
+
+def get_items_by_ids(parent_id, item_type, item_ids):
+    """Yield the items with the given ids in pages, like get_items. The ids
+    go into the url, so the pages are fetched one after another.
+    """
+    limit = min(int(settings("limitIndex") or 50), 50)
+
+    for start in range(0, len(item_ids), limit):
+        params = {
+            "ParentId": parent_id,
+            "IncludeItemTypes": item_type,
+            "Ids": ",".join(item_ids[start : start + limit]),
+            "SortBy": "SortName",
+            "SortOrder": "Ascending",
+            "Fields": api.info(),
+            "CollapseBoxSetItems": False,
+            "EnableTotalRecordCount": False,
+            "Recursive": True,
+        }
+        result = _get("Users/{UserId}/Items", params)
+        if not result or "Items" not in result:
+            raise ServerResponseException(
+                "No items in the response, params:%s" % params
+            )
+
+        yield {
+            "Items": result["Items"],
+            "TotalRecordCount": len(item_ids),
+            "StartIndex": start,
+        }
 
 
 def get_artists(parent_id=None):
@@ -196,11 +231,12 @@ def _get_items(query, server_id=None):
     """query = {
         'url': string,
         'params': dict -- opt, include StartIndex to resume
+        'page_size': int -- opt, items per request instead of limitIndex
     }
     """
     items = {"Items": [], "TotalRecordCount": 0, "RestorePoint": {}}
 
-    limit = min(int(settings("limitIndex") or 50), 50)
+    limit = query.get("page_size") or min(int(settings("limitIndex") or 50), 50)
     dthreads = int(settings("limitThreads") or 3)
 
     url = query["url"]

@@ -1,4 +1,5 @@
 from collections import namedtuple
+from functools import lru_cache
 from collections.abc import Iterable, Mapping, MutableMapping
 
 
@@ -50,6 +51,11 @@ def sqlite_namedtuple_factory(cursor, row):
 
     http://peter-hoffmann.com/2010/python-sqlite-namedtuple-factory.html
     """
-    fields = [col[0] for col in cursor.description]
-    Row = namedtuple("Row", fields)
-    return Row(*row)
+    fields = tuple(col[0] for col in cursor.description)
+    return _row_class(fields)(*row)
+
+
+# Creating the class takes longer than the query itself
+@lru_cache(maxsize=64)
+def _row_class(fields):
+    return namedtuple("Row", fields)
