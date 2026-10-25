@@ -82,7 +82,7 @@ class FullSync(object):
 
                 if library:
                     if library.media_type == "mixed":
-                        self.sync["Libraries"].append("Mixed:%s" % library_id)
+                        self.add_library("Mixed:%s" % library_id)
                         # Include boxsets library
                         libraries = self.get_libraries()
                         boxsets = [
@@ -91,9 +91,9 @@ class FullSync(object):
                             if row.media_type == "boxsets"
                         ]
                         if boxsets:
-                            self.sync["Libraries"].append("Boxsets:%s" % boxsets[0])
+                            self.add_library("Boxsets:%s" % boxsets[0])
                     elif library.media_type == "movies":
-                        self.sync["Libraries"].append(library_id)
+                        self.add_library(library_id)
                         # Include boxsets library
                         libraries = self.get_libraries()
                         boxsets = [
@@ -101,19 +101,26 @@ class FullSync(object):
                             for row in libraries
                             if row.media_type == "boxsets"
                         ]
-                        # Verify we're only trying to sync boxsets once
-                        if boxsets and boxsets[0] not in self.sync["Libraries"]:
-                            self.sync["Libraries"].append("Boxsets:%s" % boxsets[0])
+                        if boxsets:
+                            self.add_library("Boxsets:%s" % boxsets[0])
                     else:
                         # Only called if the library isn't already known about
-                        self.sync["Libraries"].append(library_id)
+                        self.add_library(library_id)
                 else:
-                    self.sync["Libraries"].append(library_id)
+                    self.add_library(library_id)
         else:
             self.mapping()
 
         if not xmls.advanced_settings() and self.sync["Libraries"]:
             self.start()
+
+    def add_library(self, library_id):
+        """Add a library to the sync. A library from an interrupted sync is
+        already in the list: adding it again would sync it twice, first from
+        where the interrupted sync stopped, then from the start.
+        """
+        if library_id not in self.sync["Libraries"]:
+            self.sync["Libraries"].append(library_id)
 
     def get_libraries(self):
         with Database("jellyfin") as jellyfindb:
