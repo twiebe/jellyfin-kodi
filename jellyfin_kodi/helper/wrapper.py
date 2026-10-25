@@ -43,10 +43,11 @@ def progress(message=None):
             if item:
                 args = (item,) + args
 
-            result = func(self, dialog=dialog, *args, **kwargs)
-            dialog.close()
-
-            return result
+            try:
+                return func(self, dialog=dialog, *args, **kwargs)
+            finally:
+                # An open progress dialog stays on screen until Kodi exits
+                dialog.close()
 
         return wrapper
 
