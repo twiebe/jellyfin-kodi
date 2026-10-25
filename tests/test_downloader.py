@@ -171,3 +171,15 @@ def test_basic_items_in_big_pages(server):
     server[500] = _page("b")
     list(downloader.get_items("lib", "Movie", basic=True))
     assert sorted(server["requested"], key=str) == [0, 500, "count"]
+
+
+def test_page_size_above_50(server, monkeypatch):
+    # The settings allow up to 100 items per request
+    monkeypatch.setattr(
+        downloader, "settings", {"limitIndex": "80", "limitThreads": "1"}.get
+    )
+    server["count"] = {"TotalRecordCount": 100}
+    server[0] = _page("a")
+    server[80] = _page("b")
+    list(downloader.get_items("lib", "Movie"))
+    assert sorted(server["requested"], key=str) == [0, 80, "count"]
