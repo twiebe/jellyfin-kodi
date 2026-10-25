@@ -200,7 +200,7 @@ def _get_items(query, server_id=None):
     """
     items = {"Items": [], "TotalRecordCount": 0, "RestorePoint": {}}
 
-    limit = min(int(settings("limitIndex") or 50), 50)
+    limit = int(settings("limitIndex") or 15)
     dthreads = int(settings("limitThreads") or 3)
 
     url = query["url"]
