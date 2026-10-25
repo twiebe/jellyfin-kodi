@@ -166,7 +166,7 @@ def get_items(parent_id, item_type=None, basic=False, params=None):
 
     if basic:
         # Without the extra fields the server answers big pages quickly
-        query["page_size"] = 500
+        query["page_size"] = min(page_size() * 30, 1000)
 
     for items in _get_items(query):
         yield items
