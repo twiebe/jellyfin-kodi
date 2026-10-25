@@ -317,7 +317,7 @@ class FullSync(object):
 
         if self.update_library:
             changed = self.changed_items(library, "Movie", Movies, processed_ids)
-            changed_ids = self.fetch_by_id(changed, processed_ids)
+            changed_ids = [item["Id"] for item in changed]
 
         for items, start_index in self.pages(library, "Movie", changed_ids):
 
@@ -365,16 +365,6 @@ class FullSync(object):
         ):
             self.sync["RestorePoint"] = items["RestorePoint"]
             yield items, items["RestorePoint"]["params"]["StartIndex"]
-
-    def fetch_by_id(self, changed, unchanged_ids):
-        """The ids of the changed items to fetch, None to fetch all items.
-        Fetching items by id is slower per item, it only pays off when most
-        items didn't change.
-        """
-        if len(changed) > len(unchanged_ids):
-            return None
-
-        return [item["Id"] for item in changed]
 
     def changed_items(self, library, item_types, obj_class, unchanged_ids):
         """Update sync: the items that changed since they were synced, in
@@ -498,7 +488,7 @@ class FullSync(object):
             changed = self.changed_items(
                 library, "MusicVideo", MusicVideos, processed_ids
             )
-            changed_ids = self.fetch_by_id(changed, processed_ids)
+            changed_ids = [item["Id"] for item in changed]
 
         for items, start_index in self.pages(library, "MusicVideo", changed_ids):
 
