@@ -172,11 +172,16 @@ def get_items(parent_id, item_type=None, basic=False, params=None):
         yield items
 
 
+def page_size():
+    """Items per request, the range is set in the settings UI."""
+    return int(settings("limitIndex") or 15)
+
+
 def get_items_by_ids(parent_id, item_type, item_ids):
     """Yield the items with the given ids in pages, like get_items. The ids
     go into the url, so the pages are fetched one after another.
     """
-    limit = min(int(settings("limitIndex") or 50), 50)
+    limit = page_size()
 
     for start in range(0, len(item_ids), limit):
         params = {
@@ -236,7 +241,7 @@ def _get_items(query, server_id=None):
     """
     items = {"Items": [], "TotalRecordCount": 0, "RestorePoint": {}}
 
-    limit = query.get("page_size") or min(int(settings("limitIndex") or 50), 50)
+    limit = query.get("page_size") or page_size()
     dthreads = int(settings("limitThreads") or 3)
 
     url = query["url"]
