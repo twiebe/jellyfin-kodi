@@ -1302,8 +1302,8 @@ msgid "Add-on: stream via Jellyfin. Native: play files directly from their netwo
 msgstr "Add-on: stream via Jellyfin. Native: play files directly from their network share."
 
 msgctxt "#34011"
-msgid "Items per server request during sync, at most 50. Lower it if the server is slow."
-msgstr "Items per server request during sync, at most 50. Lower it if the server is slow."
+msgid "Items per server request during sync. Lower it if the server is slow."
+msgstr "Items per server request during sync. Lower it if the server is slow."
 
 msgctxt "#34012"
 msgid "Parallel downloads during sync. Lower it on weak devices or servers."
