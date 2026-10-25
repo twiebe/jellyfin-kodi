@@ -178,33 +178,28 @@ def page_size():
 
 
 def get_items_by_ids(parent_id, item_type, item_ids):
-    """Yield the items with the given ids in pages, like get_items. The ids
-    go into the url, so the pages are fetched one after another.
-    """
+    """Yield the items with the given ids in pages, like get_items."""
     limit = page_size()
+    params = {
+        "ParentId": parent_id,
+        "IncludeItemTypes": item_type,
+        "SortBy": "SortName",
+        "SortOrder": "Ascending",
+        "Fields": api.info(),
+        "CollapseBoxSetItems": False,
+        "EnableTotalRecordCount": False,
+        "Recursive": True,
+    }
+    starts = range(0, len(item_ids), limit)
+    query_params = [
+        dict(params, Ids=",".join(item_ids[start : start + limit])) for start in starts
+    ]
 
-    for start in range(0, len(item_ids), limit):
-        params = {
-            "ParentId": parent_id,
-            "IncludeItemTypes": item_type,
-            "Ids": ",".join(item_ids[start : start + limit]),
-            "SortBy": "SortName",
-            "SortOrder": "Ascending",
-            "Fields": api.info(),
-            "CollapseBoxSetItems": False,
-            "EnableTotalRecordCount": False,
-            "Recursive": True,
-        }
-        result = _get("Users/{UserId}/Items", params)
-        if not result or "Items" not in result:
-            raise ServerResponseException(
-                "No items in the response, params:%s" % params
-            )
-
+    for index, result in _get_pages("Users/{UserId}/Items", query_params):
         yield {
             "Items": result["Items"],
             "TotalRecordCount": len(item_ids),
-            "StartIndex": start,
+            "StartIndex": starts[index],
         }
 
 
@@ -242,7 +237,6 @@ def _get_items(query, server_id=None):
     items = {"Items": [], "TotalRecordCount": 0, "RestorePoint": {}}
 
     limit = query.get("page_size") or page_size()
-    dthreads = int(settings("limitThreads") or 3)
 
     url = query["url"]
     query.setdefault("params", {})
@@ -283,75 +277,86 @@ def _get_items(query, server_id=None):
             for offset in range(params["StartIndex"], items["TotalRecordCount"], limit)
         ]
 
-        # multiprocessing.dummy.Pool completes all requests in multiple threads but has to
-        # complete all tasks before allowing any results to be processed. ThreadPoolExecutor
-        # allows for completed tasks to be processed while other tasks are completed on other
-        # threads. Don't be a dummy.Pool, be a ThreadPoolExecutor
-        with concurrent.futures.ThreadPoolExecutor(dthreads) as p:
-            # dictionary for storing the jobs and their results
-            jobs = {}
+        for index, result in _get_pages(url, query_params, server_id):
+            query["params"] = query_params[index]
+            items["Items"].extend(result["Items"])
+            # Using items to return data and communicate a restore point back to the callee is
+            # a violation of the SRP. TODO: Separate responsibilities.
+            items["RestorePoint"] = query
+            yield items
+            del items["Items"][:]
 
-            # semaphore to avoid fetching complete library to memory
-            thread_buffer = threading.Semaphore(dthreads)
-            stopped = threading.Event()
 
-            # wrapper function for _get that uses a semaphore
-            def get_wrapper(params):
-                thread_buffer.acquire()
-                if stopped.is_set():
-                    return None
-                return _get(url, params, server_id=server_id)
+def _get_pages(url, query_params, server_id=None):
+    """Request the pages with the given params in parallel. Yields the
+    index of the params and the response of each page as it arrives.
+    """
+    dthreads = int(settings("limitThreads") or 3)
 
-            # create jobs
-            for param in query_params:
-                job = p.submit(get_wrapper, param)
-                # the query params are later needed again
-                jobs[job] = param
+    # multiprocessing.dummy.Pool completes all requests in multiple threads but has to
+    # complete all tasks before allowing any results to be processed. ThreadPoolExecutor
+    # allows for completed tasks to be processed while other tasks are completed on other
+    # threads. Don't be a dummy.Pool, be a ThreadPoolExecutor
+    with concurrent.futures.ThreadPoolExecutor(dthreads) as p:
+        # dictionary for storing the jobs and their results
+        jobs = {}
 
-            try:
-                # process complete jobs
-                for job in concurrent.futures.as_completed(jobs):
-                    # get the result
-                    result = job.result()
-                    query["params"] = jobs[job]
-                    if not result or "Items" not in result:
-                        raise ServerResponseException(
-                            "No items in the response %s params:%s"
-                            % (url, query["params"])
+        # semaphore to avoid fetching complete library to memory
+        thread_buffer = threading.Semaphore(dthreads)
+        stopped = threading.Event()
+
+        # wrapper function for _get that uses a semaphore
+        def get_wrapper(params):
+            thread_buffer.acquire()
+            if stopped.is_set():
+                return None
+            return _get(url, params, server_id=server_id)
+
+        # create jobs
+        for index, param in enumerate(query_params):
+            job = p.submit(get_wrapper, param)
+            # the index of the query params is later needed again
+            jobs[job] = index
+
+        try:
+            # process complete jobs
+            for job in concurrent.futures.as_completed(jobs):
+                # get the result
+                result = job.result()
+                index = jobs[job]
+                if not result or "Items" not in result:
+                    raise ServerResponseException(
+                        "No items in the response %s params:%s"
+                        % (url, query_params[index])
+                    )
+
+                # free job memory
+                del jobs[job]
+                del job
+
+                # Mitigates #216 till the server validates the date provided is valid
+                if result["Items"] and result["Items"][0].get("ProductionYear"):
+                    try:
+                        date(result["Items"][0]["ProductionYear"], 1, 1)
+                    except ValueError:
+                        LOG.info(
+                            "#216 mitigation triggered. Setting ProductionYear to None"
                         )
+                        result["Items"][0]["ProductionYear"] = None
 
-                    # free job memory
-                    del jobs[job]
-                    del job
+                yield index, result
 
-                    # Mitigates #216 till the server validates the date provided is valid
-                    if result["Items"] and result["Items"][0].get("ProductionYear"):
-                        try:
-                            date(result["Items"][0]["ProductionYear"], 1, 1)
-                        except ValueError:
-                            LOG.info(
-                                "#216 mitigation triggered. Setting ProductionYear to None"
-                            )
-                            result["Items"][0]["ProductionYear"] = None
-
-                    items["Items"].extend(result["Items"])
-                    # Using items to return data and communicate a restore point back to the callee is
-                    # a violation of the SRP. TODO: Separate responsibilities.
-                    items["RestorePoint"] = query
-                    yield items
-                    del items["Items"][:]
-
-                    # release the semaphore again
-                    thread_buffer.release()
-            finally:
-                # Unblock the workers, or leaving the pool waits forever for
-                # jobs stuck on the semaphore, e.g. after an error or when
-                # the caller stops iterating. Woken workers skip their request.
-                stopped.set()
-                for job in jobs:
-                    job.cancel()
-                for _ in range(dthreads):
-                    thread_buffer.release()
+                # release the semaphore again
+                thread_buffer.release()
+        finally:
+            # Unblock the workers, or leaving the pool waits forever for
+            # jobs stuck on the semaphore, e.g. after an error or when
+            # the caller stops iterating. Woken workers skip their request.
+            stopped.set()
+            for job in jobs:
+                job.cancel()
+            for _ in range(dthreads):
+                thread_buffer.release()
 
 
 class GetItemWorker(threading.Thread):

@@ -142,27 +142,67 @@ def test_no_requests_after_a_failed_page(server, monkeypatch):
     assert sorted(server["requested"], key=str) == [0, "count"]
 
 
-def test_items_by_ids_in_pages(server, monkeypatch):
-    requested = []
+@pytest.fixture
+def server_by_ids(server, monkeypatch):
+    """Fake server for requests by id: maps the Ids param to a page."""
+    responses = {"requested": []}
 
     def fake_get(handler, params=None, server_id=None):
-        requested.append(params["Ids"])
-        return _page(*params["Ids"].split(","))
+        responses["requested"].append(params["Ids"])
+        response = responses.get(params["Ids"], _page(*params["Ids"].split(",")))
+        if isinstance(response, Exception):
+            raise response
+        return response
 
     monkeypatch.setattr(downloader, "_get", fake_get)
-    pages = list(downloader.get_items_by_ids("lib", "Movie", ["a", "b", "c"]))
-
-    assert requested == ["a,b", "c"]
-    assert [(page["StartIndex"], page["TotalRecordCount"]) for page in pages] == [
-        (0, 3),
-        (2, 3),
-    ]
+    return responses
 
 
-def test_failed_page_by_ids_raises(server, monkeypatch):
-    monkeypatch.setattr(downloader, "_get", lambda *args, **kwargs: None)
-    with pytest.raises(ServerResponseException):
-        list(downloader.get_items_by_ids("lib", "Movie", ["a"]))
+def _by_ids(*ids):
+    return downloader.get_items_by_ids("lib", "Movie", list(ids))
+
+
+def test_items_by_ids_in_pages(server_by_ids, monkeypatch):
+    monkeypatch.setattr(
+        downloader, "settings", {"limitIndex": "2", "limitThreads": "2"}.get
+    )
+    pages = {
+        page["StartIndex"]: (
+            [item["Id"] for item in page["Items"]],
+            page["TotalRecordCount"],
+        )
+        for page in _by_ids("a", "b", "c", "d", "e")
+    }
+
+    assert pages == {0: (["a", "b"], 5), 2: (["c", "d"], 5), 4: (["e"], 5)}
+
+
+def test_failed_page_by_ids_raises(server_by_ids):
+    server_by_ids["a,b"] = None
+    assert isinstance(
+        _run(lambda: list(_by_ids("a", "b", "c", "d"))), ServerResponseException
+    )
+
+
+def test_stopping_early_by_ids_does_not_hang(server_by_ids):
+    def fetch_first_page():
+        generator = _by_ids("a", "b", "c", "d", "e", "f")
+        next(generator)
+        generator.close()
+
+    assert _run(fetch_first_page) is None
+
+
+def test_no_requests_by_ids_after_a_failed_page(server_by_ids, monkeypatch):
+    monkeypatch.setattr(
+        downloader, "settings", {"limitIndex": "1", "limitThreads": "1"}.get
+    )
+    server_by_ids["a"] = None
+
+    assert isinstance(
+        _run(lambda: list(_by_ids("a", "b", "c", "d"))), ServerResponseException
+    )
+    assert server_by_ids["requested"] == ["a"]
 
 
 def test_basic_items_in_bigger_pages(server):
