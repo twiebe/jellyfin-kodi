@@ -134,11 +134,11 @@ class TVShows(KodiDb):
             tags.append("Favorite tvshows")
 
         obj["Tags"] = tags
-        obj["Checksum"] = self.checksum(obj, obj["LibraryName"])
+        obj["SyncChecksum"] = self.checksum(obj, obj["LibraryName"])
 
         # Seasons and episodes are still processed, they have checksums of
         # their own
-        if not (update and self.skip_unchanged and e_item[8] == obj["Checksum"]):
+        if not (update and self.skip_unchanged and e_item[8] == obj["SyncChecksum"]):
             self.tvshow_write(obj, update)
 
         self.item_ids.append(obj["Id"])
@@ -226,6 +226,9 @@ class TVShows(KodiDb):
         self.add_genres(*values(obj, QU.add_genres_tvshow_obj))
         self.add_studios(*values(obj, QU.add_studios_tvshow_obj))
         self.artwork.add(obj["Artwork"], obj["ShowId"], "tvshow")
+        self.jellyfin_db.update_sync_checksum(
+            *values(obj, QUEM.update_sync_checksum_obj)
+        )
 
     def tvshow_add(self, obj):
         """Add object to kodi."""
@@ -419,9 +422,9 @@ class TVShows(KodiDb):
                     obj["EpisodeId"],
                 )
 
-        obj["Checksum"] = self.checksum(obj)
+        obj["SyncChecksum"] = self.checksum(obj)
 
-        if update and self.skip_unchanged and e_item[8] == obj["Checksum"]:
+        if update and self.skip_unchanged and e_item[8] == obj["SyncChecksum"]:
             self.item_ids.append(obj["Id"])
 
             return False
@@ -486,6 +489,9 @@ class TVShows(KodiDb):
         self.add_playstate(*values(obj, QU.add_bookmark_obj))
         self.artwork.update(
             obj["Artwork"]["Primary"], obj["EpisodeId"], "episode", "thumb"
+        )
+        self.jellyfin_db.update_sync_checksum(
+            *values(obj, QUEM.update_sync_checksum_obj)
         )
         self.item_ids.append(obj["Id"])
 
