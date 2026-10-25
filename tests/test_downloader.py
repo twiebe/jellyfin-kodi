@@ -129,15 +129,17 @@ def test_stopping_early_does_not_hang(server):
 
 def test_no_requests_after_a_failed_page(server, monkeypatch):
     monkeypatch.setattr(
-        downloader, "settings", {"limitIndex": "1", "limitThreads": "2"}.get
+        downloader, "settings", {"limitIndex": "1", "limitThreads": "1"}.get
     )
     server["count"] = {"TotalRecordCount": 4}
     server[0] = None
     server[1] = server[2] = server[3] = _page("x")
 
     assert isinstance(_run(_fetch), ServerResponseException)
-    # Both workers fetch a page, then wait on the semaphore for a free slot
-    assert sorted(server["requested"], key=str) == [0, 1, "count"]
+    # The failed page keeps its slot, the next pages wait for it and are
+    # skipped. With more threads, which pages are fetched before the error
+    # is seen depends on timing.
+    assert sorted(server["requested"], key=str) == [0, "count"]
 
 
 def test_items_by_ids_in_pages(server, monkeypatch):
