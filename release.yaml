@@ -1,63 +1,22 @@
-version: '2.2.0'
+version: '1:2.2.0-1'
 changelog: |-
-  New features and improvements
-  -----------------------------
-  + Make UpNext integration optional (#1178) @Rijul-A, @oddstr13
-
-  Bug Fixes
-  ---------
-  + Fix audio stream selection after playback starts (#1210) @Rijul-A, @oddstr13
-  + Write playlist and node XML as UTF-8 (#1169) @yorah, @oddstr13
-  + Fix segment skipper for multiple same type segments (#1177) @akaMagisk, @oddstr13
-  + Fix hang on sigterm (#1172) @phly95, @oddstr13
-  + Avoid errors at upgrade/uninstall (#1185) @Rijul-A, @oddstr13
-  + Use correct key for log level (#1189) @Rijul-A, @oddstr13
-  + Keep server order as collection default, honor sort titles (#1160) @pannal, @oddstr13
-
-  Code or Repo Maintenance
-  ------------------------
-  + Restructure release-drafter config for new categories syntax (#1230) @oddstr13
-  + Dump running threads and their stacks on service exit (#1204) @oddstr13
-  + Add proper deprecation (#1205) @oddstr13
-  + Update mcr.microsoft.com/devcontainers/python Docker tag to v3.2.3 (#1180) @renovate[bot], @oddstr13
-  + Remove deprecated `translate_path` (#1209) @Rijul-A, @oddstr13
-  + Use correct localization method (#1202) @Rijul-A, @oddstr13
-  + Cache and reload log level (#1192) @Rijul-A, @oddstr13
-  + Localize segment skip dialog (#1195) @Rijul-A, @oddstr13
-  + Remove unsupported Python and Kodi code (#1197) @Rijul-A, @oddstr13
-  + Update devcontainer python version (#1199) @Rijul-A, @oddstr13
-  + Remove unused dep script.module.addon.signals (#1193) @Rijul-A, @oddstr13
-  + Add *.zip to .gitignore (#1190) @Rijul-A, @oddstr13
-
-  Documentation updates
-  ---------------------
-  + Update readme: py2, dev, llm (#1206) @oddstr13, @Rijul-A
-
-  Dependency updates
-  ------------------
-  + Update release-drafter to v7 and tune config (#1225) @oddstr13
-
-  CI & build changes
-  ------------------
-  + Fix release-prepp workflow (#1234) @oddstr13
-  + Space after comma please (#1233) @oddstr13
-  + Update codecov/codecov-action action to v7.1.1 (#1232) @renovate[bot], @oddstr13
-  + Fix changelog formatting (#1231) @oddstr13
-  + Update codecov/codecov-action action to v7.1.0 (#1224) @renovate[bot], @oddstr13
-  + Add CI to auto-close invalid:llm tagged items (#1215) @oddstr13
-  + Update github/codeql-action action to v4.38.0 (#1213) @renovate[bot], @oddstr13
-  + Avoid potential script injection in the changelog (#1207) @oddstr13
-  + Expand deny list of files in build zip (#1188) @Rijul-A, @oddstr13
-  + Update github/codeql-action action to v4.37.9 (#1171) @renovate[bot], @oddstr13
-  + Update github/codeql-action action to v4.37.4 (#1167) @renovate[bot], @oddstr13
-  + Update github/codeql-action action to v4.37.2 (#1166) @renovate[bot], @oddstr13
-  + Update actions/upload-artifact action to v7.0.1 (#1128) @renovate[bot], @oddstr13
-  + Update actions/setup-python action to v7 (#1165) @renovate[bot], @oddstr13
-  + Update github/codeql-action action to v4.37.1 (#1130) @renovate[bot], @oddstr13
-  + Update burnett01/rsync-deployments action to v9 (#1149) @renovate[bot], @oddstr13
-  + Update codecov/codecov-action action to v7 (#1143) @renovate[bot], @oddstr13
-  + Update actions/checkout action to v7 (#1148) @renovate[bot], @oddstr13
-  + Update actions/setup-python action to v6.3.0 (#1150) @renovate[bot], @oddstr13
+  Fork of jellyfin-kodi 2.2.0 (twiebe)
+  ------------------------------------
+  + Update sync only writes the items that changed, fetched in parallel
+  + Don't wipe the library when fetching its items fails
+  + Don't sync a library twice after an interrupted sync
+  + Page size setting is no longer silently limited to 50
+  + Faster sync: shared exit monitor, artwork settings read once, cached row class
+  + Don't keep Kodi from exiting with the websocket, service restart works again
+  + Roll back database changes when an error is raised
+  + Keep the saved login when the server answers with an error
+  + Close the progress dialog when a sync fails
+  + Notify about new items after the first notification too
+  + Honour the server offline notification setting
+  + Keep the server's tracks when the transcode track dialog is disabled
+  + Treat 0 days in next episodes as no limit again
+  + Remove the enhanced artwork setting
+  + Short help text for every visible setting
 dependencies:
   py3:
     - addon: 'xbmc.python'
