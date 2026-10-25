@@ -122,9 +122,15 @@ class Context(object):
         if not item:
             return
 
+        try:
+            user_data = json.loads(item[4]) if item[4] else {}
+        except ValueError:
+            # Not the user data, e.g. written by an older version
+            user_data = {}
+
         return {
             "Id": item[0],
-            "UserData": json.loads(item[4]) if item[4] else {},
+            "UserData": user_data if isinstance(user_data, dict) else {},
             "Type": item[3],
         }
 
