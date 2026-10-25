@@ -163,12 +163,24 @@ def test_failed_page_by_ids_raises(server, monkeypatch):
         list(downloader.get_items_by_ids("lib", "Movie", ["a"]))
 
 
-def test_basic_items_in_big_pages(server):
-    server["count"] = {"TotalRecordCount": 600}
+def test_basic_items_in_bigger_pages(server):
+    # limitIndex 2
+    server["count"] = {"TotalRecordCount": 100}
     server[0] = _page("a")
-    server[500] = _page("b")
+    server[60] = _page("b")
     list(downloader.get_items("lib", "Movie", basic=True))
-    assert sorted(server["requested"], key=str) == [0, 500, "count"]
+    assert sorted(server["requested"], key=str) == [0, 60, "count"]
+
+
+def test_basic_pages_have_at_most_1000_items(server, monkeypatch):
+    monkeypatch.setattr(
+        downloader, "settings", {"limitIndex": "100", "limitThreads": "1"}.get
+    )
+    server["count"] = {"TotalRecordCount": 1500}
+    server[0] = _page("a")
+    server[1000] = _page("b")
+    list(downloader.get_items("lib", "Movie", basic=True))
+    assert sorted(server["requested"], key=str) == [0, 1000, "count"]
 
 
 def test_page_size_above_50(server, monkeypatch):
