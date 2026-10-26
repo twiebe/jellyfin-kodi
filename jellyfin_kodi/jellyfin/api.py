@@ -350,8 +350,15 @@ class API(object):
         )
 
     def is_in_playlist(self, playlist_id, item_id):
-        result = self.user_items(params={"ParentId": playlist_id, "Ids": item_id})
-        return bool(result and result.get("Items"))
+        # Together with Ids the server ignores ParentId, so list the playlist
+        result = self.user_items(
+            params={
+                "ParentId": playlist_id,
+                "EnableImages": False,
+                "EnableUserData": False,
+            }
+        )
+        return any(item["Id"] == item_id for item in (result or {}).get("Items", []))
 
     def add_to_playlist(self, playlist_id, item_id):
         return self._post(
