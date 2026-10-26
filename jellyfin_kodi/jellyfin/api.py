@@ -339,6 +339,26 @@ class API(object):
     def favorite(self, item_id, option=True):
         return self.users("/FavoriteItems/%s" % item_id, "POST" if option else "DELETE")
 
+    def get_playlists(self):
+        return self.user_items(
+            params={
+                "IncludeItemTypes": "Playlist",
+                "Recursive": True,
+                "SortBy": "SortName",
+                "SortOrder": "Ascending",
+            }
+        )
+
+    def is_in_playlist(self, playlist_id, item_id):
+        result = self.user_items(params={"ParentId": playlist_id, "Ids": item_id})
+        return bool(result and result.get("Items"))
+
+    def add_to_playlist(self, playlist_id, item_id):
+        return self._post(
+            "Playlists/%s/Items" % playlist_id,
+            params={"Ids": item_id, "UserId": "{UserId}"},
+        )
+
     def get_system_info(self):
         return self._get("System/Configuration")
 
