@@ -1,4 +1,4 @@
-version: '1:2.2.0-2'
+version: '1:2.2.0-3'
 changelog: |-
   Fork of jellyfin-kodi 2.2.0 (twiebe)
   ------------------------------------
@@ -17,6 +17,7 @@ changelog: |-
   + Treat 0 days in next episodes as no limit again
   + Remove the enhanced artwork setting
   + Short help text for every visible setting
+  + Add to playlist in the Jellyfin options of movies, episodes, music videos and songs
 dependencies:
   py3:
     - addon: 'xbmc.python'
