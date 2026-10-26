@@ -233,6 +233,30 @@ msgctxt "#30412"
 msgid "Transcode"
 msgstr "Transcode"
 
+msgctxt "#30413"
+msgid "Add to playlist"
+msgstr "Add to playlist"
+
+msgctxt "#30414"
+msgid "Add to playlists"
+msgstr "Add to playlists"
+
+msgctxt "#30415"
+msgid "There is no playlist to add this to yet. Create one in Jellyfin first."
+msgstr "There is no playlist to add this to yet. Create one in Jellyfin first."
+
+msgctxt "#30416"
+msgid "Added to {0}"
+msgstr "Added to {0}"
+
+msgctxt "#30417"
+msgid "Already in {0}"
+msgstr "Already in {0}"
+
+msgctxt "#30418"
+msgid "Could not add to {0}"
+msgstr "Could not add to {0}"
+
 msgctxt "#30500"
 msgid "Verify connection"
 msgstr "Verify connection"
