@@ -12,6 +12,7 @@ import xbmcvfs
 from .. import database
 from ..dialogs import context
 from ..helper import translate, settings, dialog, LazyLogger
+from ..helper.exceptions import HTTPException
 from ..jellyfin import Jellyfin
 
 #################################################################################################
@@ -29,7 +30,10 @@ OPTIONS = {
     "AddFav": translate(30405),
     "RemoveFav": translate(30406),
     "Transcode": translate(30412),
+    "AddPlaylist": translate(30413),
 }
+# Items that can go into a playlist on their own
+PLAYLIST_TYPES = ("Movie", "Episode", "MusicVideo", "Video", "Audio")
 
 #################################################################################################
 
@@ -147,6 +151,9 @@ class Context(object):
             else:
                 options.append(OPTIONS["AddFav"])
 
+        if self.item["Type"] in PLAYLIST_TYPES:
+            options.append(OPTIONS["AddPlaylist"])
+
         options.append(OPTIONS["Refresh"])
 
         if settings("enableContextDelete.bool"):
@@ -181,6 +188,62 @@ class Context(object):
 
         elif selected == OPTIONS["Delete"]:
             self.delete_item()
+
+        elif selected == OPTIONS["AddPlaylist"]:
+            self.add_to_playlists()
+
+    def add_to_playlists(self):
+        """Add the item to the playlists the user picks.
+        Playlists that hold it already are skipped, the server would add it twice.
+        """
+        media_type = "Audio" if self.item["Type"] == "Audio" else "Video"
+        playlists = [
+            playlist
+            for playlist in (self.api_client.get_playlists() or {}).get("Items", [])
+            # Empty playlists have no media type yet, older servers send none
+            if playlist.get("MediaType") in (None, "Unknown", media_type)
+        ]
+
+        if not playlists:
+            dialog("ok", "{jellyfin}", translate(30415))
+            return
+
+        selected = dialog(
+            "multi", translate(30414), [playlist["Name"] for playlist in playlists]
+        )
+        if not selected:
+            return
+
+        added, present, failed = [], [], []
+        for index in selected:
+            playlist = playlists[index]
+            try:
+                if self.api_client.is_in_playlist(playlist["Id"], self.item["Id"]):
+                    present.append(playlist["Name"])
+                else:
+                    self.api_client.add_to_playlist(playlist["Id"], self.item["Id"])
+                    added.append(playlist["Name"])
+            except HTTPException as error:
+                LOG.warning(
+                    "Adding %s to playlist %s failed: %s",
+                    self.item["Id"],
+                    playlist["Id"],
+                    error.status,
+                )
+                failed.append(playlist["Name"])
+
+        messages = [
+            translate(string_id).format(", ".join(names))
+            for string_id, names in ((30416, added), (30417, present), (30418, failed))
+            if names
+        ]
+        dialog(
+            "notification",
+            heading="{jellyfin}",
+            message="\n".join(messages),
+            icon="{jellyfin}",
+            sound=False,
+        )
 
     def delete_item(self):
         if settings("skipContextMenu.bool") or dialog(
