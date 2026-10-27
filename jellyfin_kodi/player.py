@@ -27,6 +27,7 @@ class Player(xbmc.Player):
     skip_segments = {}
     skip_prompted = set()
     skip_dialog = None
+    _skip_start_time = 0.0
     segment_checker = None
     on_play_handled = 0
     playback_generation = 0
@@ -37,6 +38,9 @@ class Player(xbmc.Player):
     def get_playing_file(self):
         try:
             return self.getPlayingFile()
+        except RuntimeError as error:
+            # Kodi is not playing any file, e.g. Player.OnAVChange after a stop
+            LOG.debug(error)
         except Exception as error:
             LOG.exception(error)
 
@@ -390,6 +394,23 @@ class Player(xbmc.Player):
             if self.segment_checker:
                 self.segment_checker.wake()
 
+    def track_position(self):
+        """Remember the position of the playing item for the stop report.
+        Called every second by the segment checker: in the stop callback the
+        position is gone, and the progress reports are up to 10 seconds old.
+        """
+        current_file = self.get_playing_file()
+
+        if not self.is_playing_file(current_file):
+            return
+
+        try:
+            position = self.getTime()
+        except RuntimeError:
+            return
+
+        self.get_file_info(current_file)["LastKnownPosition"] = position
+
     def report_playback(self, report=True):
         """Report playback progress to jellyfin server.
         Check if the user seek.
@@ -441,6 +462,7 @@ class Player(xbmc.Player):
         item["Volume"] = result.get("volume")
         item["Muted"] = result.get("muted")
         item["CurrentPosition"] = int(self.getTime())
+        item["LastKnownPosition"] = item["CurrentPosition"]
         self.detect_audio_subs(item)
 
         data = {
@@ -491,6 +513,9 @@ class Player(xbmc.Player):
 
                 if int(item["CurrentPosition"]) == 1:
                     item["CurrentPosition"] = int(item["Runtime"])
+
+            elif "LastKnownPosition" in item:
+                item["CurrentPosition"] = item["LastKnownPosition"]
 
             data = {
                 "ItemId": item["Id"],
@@ -733,9 +758,10 @@ class Player(xbmc.Player):
             )
 
         elif mode == 2:  # Show skip button
-            self._show_skip_button(segment_type, safe_end - start, safe_end)
+            self._show_skip_button(segment_type, start, safe_end)
 
-    def _show_skip_button(self, segment_type, duration, end_time):
+    def _show_skip_button(self, segment_type, start_time, end_time):
+        duration = end_time - start_time
         LOG.debug(
             "_show_skip_button: type=%s, duration=%.1f, end_time=%.1f",
             segment_type,
@@ -758,6 +784,7 @@ class Player(xbmc.Player):
                 "1080i",
             )
             self.skip_dialog.set_skip_info(segment_type, duration)
+            self._skip_start_time = start_time
             self._skip_end_time = end_time
             LOG.debug("_show_skip_button: calling show()")
             self.skip_dialog.show()
@@ -782,13 +809,15 @@ class Player(xbmc.Player):
 
         else:
             try:
-                if self.getTime() < self._skip_end_time:
+                if self._skip_start_time <= self.getTime() < self._skip_end_time:
                     return
             except Exception:
                 pass
 
             LOG.debug(
-                "update_skip_dialog: passed end_time %.1f, closing", self._skip_end_time
+                "update_skip_dialog: outside %.1f-%.1f, closing",
+                self._skip_start_time,
+                self._skip_end_time,
             )
 
         try:

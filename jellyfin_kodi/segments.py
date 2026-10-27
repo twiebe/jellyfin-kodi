@@ -66,7 +66,15 @@ class SegmentChecker(threading.Thread):
         LOG.info("---<[ segment checker ]")
 
     def check_segments(self):
-        if not (self.player.isPlaying() and settings("mediaSegmentsEnabled.bool")):
+        if not self.player.isPlaying():
+            return
+
+        try:
+            self.player.track_position()
+        except Exception as e:
+            LOG.exception("Error tracking the playback position: %s", e)
+
+        if not settings("mediaSegmentsEnabled.bool"):
             return
 
         try:
