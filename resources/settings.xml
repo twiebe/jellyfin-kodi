@@ -41,6 +41,11 @@
 					<default>true</default>
 					<control type="toggle"/>
 				</setting>
+				<setting id="offerSavePassword" type="boolean" label="34075" help="34076">
+					<level>0</level>
+					<default>true</default>
+					<control type="toggle"/>
+				</setting>
 			</group>
 			<group id="2"/>
 			<group id="3" label="33110">

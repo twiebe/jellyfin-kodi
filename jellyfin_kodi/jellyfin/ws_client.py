@@ -27,6 +27,9 @@ class WSClient(threading.Thread):
 
     wsc = None
     stop = False
+    # An attempt to connect is under way, on_open ends it
+    connecting = False
+    token = None
 
     def __init__(self, client):
 
@@ -55,27 +58,12 @@ class WSClient(threading.Thread):
             else server.replace("http://", "ws://")
         )
         wsc_url = "%s/socket" % server
-        # Build authorization header for websocket connection
-        auth_params = {}
-        if "app.device_name" in self.client.config.data:
-            auth_params.update(
-                {
-                    "Client": self.client.config.data["app.name"],
-                    "Device": self.client.config.data["app.device_name"],
-                    "DeviceId": self.client.config.data["app.device_id"],
-                    "Version": self.client.config.data["app.version"],
-                }
-            )
-        if "auth.token" in self.client.config.data:
-            auth_params["Token"] = self.client.config.data["auth.token"]
-        auth_line = ", ".join(f'{k}="{v}"' for k, v in auth_params.items())
-        ws_headers = {"Authorization": f"MediaBrowser {auth_line}"}
 
         LOG.info("Websocket url: %s", wsc_url)
 
         self.wsc = websocket.WebSocketApp(
             wsc_url,
-            header=ws_headers,
+            header=self.get_headers,
             on_open=lambda ws: self.on_open(ws),
             on_message=lambda ws, message: self.on_message(ws, message),
             on_error=lambda ws, error: self.on_error(ws, error),
@@ -88,10 +76,38 @@ class WSClient(threading.Thread):
             if not self.stop and monitor.waitForAbort(5):
                 break
 
+    def get_headers(self):
+        """Called by the websocket library before every connection attempt,
+        so a reconnect uses a renewed token."""
+        if self.connecting:
+            # The last attempt failed before the connection opened, maybe
+            # because the server deleted the token (it does that when the
+            # user is disabled). Renew it with a saved password.
+            self.client.auth.check_token(self.token)
+        self.connecting = True
+        self.token = self.client.config.data.get("auth.token")
+
+        # Build authorization header for websocket connection
+        auth_params = {}
+        if "app.device_name" in self.client.config.data:
+            auth_params.update(
+                {
+                    "Client": self.client.config.data["app.name"],
+                    "Device": self.client.config.data["app.device_name"],
+                    "DeviceId": self.client.config.data["app.device_id"],
+                    "Version": self.client.config.data["app.version"],
+                }
+            )
+        if "auth.token" in self.client.config.data:
+            auth_params["Token"] = self.token
+        auth_line = ", ".join(f'{k}="{v}"' for k, v in auth_params.items())
+        return {"Authorization": f"MediaBrowser {auth_line}"}
+
     def on_error(self, ws, error):
         LOG.error(error)
 
     def on_open(self, ws):
+        self.connecting = False
         LOG.info("--->[ websocket opened ]")
         # Avoid a timing issue where the capabilities are not correctly registered
         if self.stopped.wait(5):
