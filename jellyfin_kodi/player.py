@@ -28,6 +28,7 @@ class Player(xbmc.Player):
     skip_prompted = set()
     skip_dialog = None
     segment_checker = None
+    on_play_handled = 0
 
     def __init__(self):
         xbmc.Player.__init__(self)
@@ -54,7 +55,7 @@ class Player(xbmc.Player):
         """
 
         self.stop_playback()
-        self._reset_state(restart=True)
+        self._reset_state()
         count = 0
         monitor = xbmc.Monitor()
 
@@ -81,6 +82,13 @@ class Player(xbmc.Player):
         items = window("jellyfin_play.json")
         item = None
 
+        if not items and not self._play_info_may_follow():
+            LOG.debug("Not a Jellyfin item: %s", current_file)
+
+            return
+
+        on_play_handled = self.on_play_handled
+
         while not items:
 
             if monitor.waitForAbort(2):
@@ -88,6 +96,11 @@ class Player(xbmc.Player):
 
             items = window("jellyfin_play.json")
             count += 1
+
+            if not items and self.on_play_handled != on_play_handled:
+                LOG.info("Not a Jellyfin item: %s", current_file)
+
+                return
 
             if count == 20:
                 LOG.info("Could not find jellyfin prop...")
@@ -136,11 +149,21 @@ class Player(xbmc.Player):
             except Exception:
                 pass  # Player may not be ready yet
 
+        if self.is_playing_file(current_file):
+            self._reset_segment_checker(restart=True)
+
         if monitor.waitForAbort(2):
             return
 
         if item["PlayOption"] == "Addon":
             self.set_audio_subs(item["AudioStreamIndex"], item["SubtitleStreamIndex"])
+
+    def _play_info_may_follow(self):
+        """Add-on paths set the playback info before playback starts. For direct
+        paths and songs, on_play sets it from the Player.OnPlay notification,
+        which Kodi only sends after this callback.
+        """
+        return settings("useDirectPaths") == "1" or self.isPlayingAudio()
 
     def set_item(self, file, item):
         """Set playback information."""
@@ -774,8 +797,8 @@ class Player(xbmc.Player):
         LOG.debug("_monitor_skip_dialog: exiting loop")
         self._reset_skip_dialog()
 
-    def _reset_state(self, restart=False):
-        self._reset_segment_checker(restart)
+    def _reset_state(self):
+        self._reset_segment_checker()
         self._reset_skip_dialog()
 
         self.up_next = False
