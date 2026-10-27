@@ -1397,3 +1397,31 @@ msgstr "AlsNächstes Erweiterung aktivieren"
 msgctxt "#33262"
 msgid "Dismiss"
 msgstr "Zurückweisen"
+
+msgctxt "#34072"
+msgid "The server deletes the saved access token when the user is disabled. With the password saved as well, Jellyfin for Kodi signs in again by itself once the user is enabled.[CR]Save the password (unencrypted)?"
+msgstr "Der Server löscht das gespeicherte Zugriffstoken, wenn der Benutzer deaktiviert wird. Ist auch das Passwort gespeichert, meldet sich Jellyfin für Kodi von selbst wieder an, sobald der Benutzer wieder aktiviert ist.[CR]Passwort speichern (unverschlüsselt)?"
+
+msgctxt "#34073"
+msgid "Token only"
+msgstr "Nur Token"
+
+msgctxt "#34074"
+msgid "Save password"
+msgstr "Passwort speichern"
+
+msgctxt "#34075"
+msgid "Offer to save the password at sign-in"
+msgstr "Beim Anmelden anbieten, das Passwort zu speichern"
+
+msgctxt "#34076"
+msgid "After you sign in with a password, asks whether to save it as well. With a saved password, the add-on signs in again by itself when the server has deleted the access token, e.g. after the user was disabled for a while. The password is stored unencrypted."
+msgstr "Fragt nach der Anmeldung mit einem Passwort, ob es ebenfalls gespeichert werden soll. Mit gespeichertem Passwort meldet sich das Add-on von selbst wieder an, wenn der Server das Zugriffstoken gelöscht hat, z. B. nachdem der Benutzer eine Weile deaktiviert war. Das Passwort wird unverschlüsselt gespeichert."
+
+msgctxt "#34077"
+msgid "The user is disabled on the server. Jellyfin for Kodi signs in again once the user is enabled."
+msgstr "Der Benutzer ist auf dem Server deaktiviert. Jellyfin für Kodi meldet sich wieder an, sobald der Benutzer aktiviert ist."
+
+msgctxt "#34078"
+msgid "Signed in to the server again"
+msgstr "Wieder am Server angemeldet"

@@ -475,6 +475,8 @@ class API(object):
 
         headers = self.get_default_headers()
         headers.update({"Content-type": "application/json"})
+        # A disabled user gets 403, connection_manager tells it apart
+        self.last_login_status = None
 
         try:
             LOG.info("Trying to login to %s/%s as %s" % (server_url, path, username))
@@ -486,6 +488,7 @@ class API(object):
                 headers=headers,
                 data=json.dumps(auth_data),
             )
+            self.last_login_status = response.status_code
 
             if response.status_code == 200:
                 return response.json()

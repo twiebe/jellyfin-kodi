@@ -24,6 +24,8 @@ ERROR = {"Invalid": 1, "Empty": 2}
 class LoginManual(xbmcgui.WindowXMLDialog):
 
     _user = None
+    _username = None
+    _password = None
     error = None
     username = None
 
@@ -40,6 +42,12 @@ class LoginManual(xbmcgui.WindowXMLDialog):
 
     def get_user(self):
         return self._user
+
+    def get_username(self):
+        return self._username
+
+    def get_password(self):
+        return self._password
 
     def onInit(self):
 
@@ -129,6 +137,9 @@ class LoginManual(xbmcgui.WindowXMLDialog):
             return False
         else:
             self._user = result
+            # For the question whether to save the password
+            self._username = username
+            self._password = password
             return True
 
     def _error(self, state, message):

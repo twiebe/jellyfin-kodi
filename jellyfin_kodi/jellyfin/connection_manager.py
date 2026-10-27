@@ -4,13 +4,15 @@
 
 import json
 import socket
+import threading
+import time
 from datetime import datetime
 from operator import itemgetter
 import traceback
 
 import urllib3
 
-from ..helper import LazyLogger
+from ..helper import LazyLogger, dialog, translate, window
 
 from .credentials import Credentials
 from .api import API
@@ -24,14 +26,29 @@ CONNECTION_STATE = {
     "ServerSignIn": 2,
     "SignedIn": 3,
 }
+# Seconds between two attempts to sign in again with a saved password, so a
+# disabled user does not get a failed login for every request
+RENEW_RETRY_DELAY = 60
+RENEW_LOCK = threading.Lock()
 
 #################################################################################################
+
+
+def notify(string_id):
+    dialog(
+        "notification",
+        heading="{jellyfin}",
+        message=translate(string_id),
+        icon="{jellyfin}",
+        sound=False,
+    )
 
 
 class ConnectionManager(object):
 
     user = {}
     server_id = None
+    token_checked = 0
 
     def __init__(self, client):
 
@@ -51,6 +68,109 @@ class ConnectionManager(object):
         self.credentials.set_credentials(self.credentials.get())
 
         self.config.data["auth.token"] = None
+
+    def save_password(self, username, password):
+        """Save the password (unencrypted) next to the token of the current
+        server, so the add-on can sign in again by itself when the server
+        deletes the token. It does that when the user is disabled.
+        """
+        server = self.get_server_info(self.server_id)
+        server["Username"] = username
+        server["Password"] = password
+
+    def renew_token(self, rejected_token, server=None):
+        """Sign in again with the saved password after the server rejected
+        rejected_token, e.g. because the user was disabled and the server
+        deleted the tokens. Returns "renewed" when there is a new token to
+        retry with, "disabled" while the server refuses the login of a
+        disabled user (HTTP 403), "failed" when the login failed otherwise,
+        e.g. because the password changed, and None without a saved password.
+        """
+        with RENEW_LOCK:
+            server = server or self.get_server_info(self.server_id) or {}
+            if server.get("Password") is None or not server.get("Username"):
+                return None
+            # Another thread got a new token in the meantime
+            token = self.config.data.get("auth.token")
+            if token and token != rejected_token:
+                return "renewed"
+
+            # Remembered as "<time> <result>", also across restarts of the client
+            key = "jellyfin.token_renew_failed.%s" % server["Id"]
+            last_failure = (window(key) or "").split()
+            if (
+                last_failure
+                and time.time() - float(last_failure[0]) < RENEW_RETRY_DELAY
+            ):
+                return last_failure[1]
+            was_disabled = last_failure[1:] == ["disabled"]
+
+            LOG.info(
+                "Token of user %s was rejected, signing in again with the saved password",
+                server["Username"],
+            )
+            data = self.API.login(
+                server["address"], server["Username"], server["Password"]
+            )
+            if not data:
+                result = "disabled" if self.API.last_login_status == 403 else "failed"
+                LOG.info("Signing in again %s", result)
+                window(key, "%s %s" % (time.time(), result))
+                if result == "disabled" and not was_disabled:
+                    notify(34077)
+                return result
+
+            window(key, clear=True)
+            server["UserId"] = data["User"]["Id"]
+            server["AccessToken"] = data["AccessToken"]
+            self.config.data["auth.user_id"] = server["UserId"]
+            self.config.data["auth.token"] = server["AccessToken"]
+            self._save_token(server)
+            LOG.info("Signed in again as %s", server["Username"])
+            if was_disabled:
+                notify(34078)
+            return "renewed"
+
+    def check_token(self, token):
+        """The websocket could not connect with token. The server refuses the
+        handshake when it deleted the token, then sign in again with the
+        saved password. Checks at most once a minute.
+        """
+        server = self.get_server_info(self.server_id) or {}
+        if server.get("Password") is None or not token:
+            return None
+        if token != self.config.data.get("auth.token"):
+            return "renewed"
+
+        now = time.time()
+        if now - self.token_checked < RENEW_RETRY_DELAY:
+            return None
+        self.token_checked = now
+
+        try:
+            status = self.API.validate_authentication_token(
+                dict(server, AccessToken=token)
+            ).get("Status_Code")
+        except Exception as error:
+            # The server is not reachable, the websocket tries again
+            LOG.debug("Token check failed: %s", error)
+            return None
+
+        if status != 401:
+            return None
+        return self.renew_token(token)
+
+    def _save_token(self, server):
+        """Write a renewed token to data.json, for the next start and the
+        plugin, which read it from there."""
+        from ..database import get_credentials, save_credentials
+
+        credentials = get_credentials()
+        for saved in credentials["Servers"]:
+            if saved["Id"] == server["Id"]:
+                saved["UserId"] = server["UserId"]
+                saved["AccessToken"] = server["AccessToken"]
+        save_credentials(credentials)
 
     def get_available_servers(self):
 
@@ -287,6 +407,7 @@ class ConnectionManager(object):
     def _after_connect_validated(
         self, server, credentials, system_info, verify_authentication, options
     ):
+        public_info = system_info
         if options.get("enableAutoLogin") is False:
 
             self.config.data["auth.user_id"] = server.pop("UserId", None)
@@ -308,8 +429,17 @@ class ConnectionManager(object):
             # Only a 401 means the token is invalid. Keep it on server errors
             # or an access schedule (403), or the user has to sign in again.
             if system_info["Status_Code"] == 401:
-                server["UserId"] = None
-                server["AccessToken"] = None
+                renewal = self.renew_token(server["AccessToken"], server)
+                if renewal == "renewed":
+                    return self._after_connect_validated(
+                        server, credentials, public_info, True, options
+                    )
+                if renewal == "disabled":
+                    # The service signs in again later with the saved password
+                    system_info["TokenRenewal"] = renewal
+                else:
+                    server["UserId"] = None
+                    server["AccessToken"] = None
             system_info["State"] = CONNECTION_STATE["Unavailable"]
             return system_info
 
@@ -369,6 +499,10 @@ class ConnectionManager(object):
         found_server["DateLastAccessed"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         found_server["UserId"] = data["User"]["Id"]
         found_server["AccessToken"] = data["AccessToken"]
+        # A password saved for the previous login, connect.py offers to save
+        # the new one
+        found_server.pop("Username", None)
+        found_server.pop("Password", None)
 
         self.credentials.add_update_server(credentials["Servers"], found_server)
 

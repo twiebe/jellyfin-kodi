@@ -87,6 +87,8 @@ class HTTP(object):
         retry = data.pop("retry", 5)
         # Taken out once, a retry must use the same method
         action = data.pop("type", "GET")
+        token = self.config.data.get("auth.token")
+        renewed = False
 
         while True:
 
@@ -140,11 +142,28 @@ class HTTP(object):
 
                         raise HTTPException("AccessRestricted", error)
                     else:
-                        self.client.callback(
-                            "Unauthorized",
-                            {"ServerId": self.config.data["auth.server-id"]},
-                        )
-                        self.client.auth.revoke_token()
+                        # Sign in again with a saved password and repeat the
+                        # request once with the new token
+                        renewal = None
+                        if not renewed:
+                            renewal = self.client.auth.renew_token(token)
+
+                        if renewal == "renewed":
+                            renewed = True
+                            token = self.config.data.get("auth.token")
+                            data["headers"].pop("Authorization", None)
+                            self._authorization(data)
+
+                            continue
+
+                        # A disabled user is nothing to resolve for the user,
+                        # the saved password signs in again once it is enabled
+                        if renewal != "disabled":
+                            self.client.callback(
+                                "Unauthorized",
+                                {"ServerId": self.config.data["auth.server-id"]},
+                            )
+                            self.client.auth.revoke_token()
 
                         raise HTTPException("Unauthorized", error)
 
