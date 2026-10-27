@@ -102,9 +102,12 @@ class Connect(object):
     def get_client(self, server_id=None):
         """Get Jellyfin client."""
         client = Jellyfin(server_id)
+        # The client may be running already, keep it the default one
+        default = client.config.data.get("app.default", False)
         client.config.app(
             "Kodi", self.info["Version"], self.info["DeviceName"], self.info["DeviceId"]
         )
+        client.config.data["app.default"] = default
         client.config.data["http.user_agent"] = (
             "Jellyfin-Kodi/%s" % self.info["Version"]
         )
