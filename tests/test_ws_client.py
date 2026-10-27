@@ -80,3 +80,55 @@ def test_stop_wakes_up_the_reading_thread():
     assert sock.calls == ["abort"]
     assert app.keep_running is False
     assert app.closed
+
+
+class FakeAuth(object):
+    def __init__(self, config):
+        self.config = config
+        self.checked = []
+
+    def check_token(self, token):
+        self.checked.append(token)
+        self.config.data["auth.token"] = "new"
+        return "renewed"
+
+
+class AuthClient(FakeClient):
+    def __init__(self):
+        FakeClient.__init__(self)
+        self.config = type("Config", (), {})()
+        self.config.data = {
+            "app.name": "Kodi",
+            "app.device_name": "dev",
+            "app.device_id": "id",
+            "app.version": "1",
+            "auth.token": "old",
+        }
+        self.auth = FakeAuth(self.config)
+
+
+# The websocket library asks for the header before every connection attempt
+def test_reconnect_after_failed_attempt_checks_the_token(monkeypatch):
+    monkeypatch.setattr(ws_client, "settings", lambda key: False)
+    client = ws_client.WSClient(AuthClient())
+
+    first = client.get_headers()
+    assert 'Token="old"' in first["Authorization"]
+    assert client.client.auth.checked == []
+
+    # No on_open in between: the attempt failed, e.g. with 403 Forbidden
+    second = client.get_headers()
+    assert client.client.auth.checked == ["old"]
+    assert 'Token="new"' in second["Authorization"]
+
+
+def test_reconnect_after_open_connection_does_not_check(monkeypatch):
+    monkeypatch.setattr(ws_client, "settings", lambda key: False)
+    client = ws_client.WSClient(AuthClient())
+    monkeypatch.setattr(client.stopped, "wait", lambda timeout: True)
+
+    client.get_headers()
+    client.on_open(object())
+    client.get_headers()
+
+    assert client.client.auth.checked == []
