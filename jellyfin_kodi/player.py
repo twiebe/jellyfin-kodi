@@ -27,7 +27,10 @@ class Player(xbmc.Player):
     skip_segments = {}
     skip_prompted = set()
     skip_dialog = None
+    _skip_start_time = 0.0
     segment_checker = None
+    on_play_handled = 0
+    playback_generation = 0
 
     def __init__(self):
         xbmc.Player.__init__(self)
@@ -35,6 +38,9 @@ class Player(xbmc.Player):
     def get_playing_file(self):
         try:
             return self.getPlayingFile()
+        except RuntimeError as error:
+            # Kodi is not playing any file, e.g. Player.OnAVChange after a stop
+            LOG.debug(error)
         except Exception as error:
             LOG.exception(error)
 
@@ -53,8 +59,10 @@ class Player(xbmc.Player):
         First, ensure previous playback terminated correctly in Jellyfin.
         """
 
+        self.playback_generation += 1
+        generation = self.playback_generation
         self.stop_playback()
-        self._reset_state(restart=True)
+        self._reset_state()
         count = 0
         monitor = xbmc.Monitor()
 
@@ -71,7 +79,7 @@ class Player(xbmc.Player):
                 except Exception:
                     count += 1
 
-                if monitor.waitForAbort(1):
+                if self._wait(monitor, 1, generation):
                     return
             else:
                 LOG.info("Cancel playback report")
@@ -81,13 +89,25 @@ class Player(xbmc.Player):
         items = window("jellyfin_play.json")
         item = None
 
+        if not items and not self._play_info_may_follow():
+            LOG.debug("Not a Jellyfin item: %s", current_file)
+
+            return
+
+        on_play_handled = self.on_play_handled
+
         while not items:
 
-            if monitor.waitForAbort(2):
+            if self._wait(monitor, 2, generation):
                 return
 
             items = window("jellyfin_play.json")
             count += 1
+
+            if not items and self.on_play_handled != on_play_handled:
+                LOG.info("Not a Jellyfin item: %s", current_file)
+
+                return
 
             if count == 20:
                 LOG.info("Could not find jellyfin prop...")
@@ -127,20 +147,37 @@ class Player(xbmc.Player):
             LOG.warning("Failed to report session playing: %s", e)
         window("jellyfin.skip.%s.bool" % item["Id"], True)
 
-        # Immediate skip check for segments starting at 0:00
+        # The segment checker shows the skip dialog, starting with its first check
         if settings("mediaSegmentsEnabled.bool"):
             try:
                 self._fetch_skip_segments(item)
-                current_pos = int(self.getTime())
-                self.check_skip_segments(item, current_pos)
-            except Exception:
-                pass  # Player may not be ready yet
+            except Exception as error:
+                LOG.warning("Failed to load media segments: %s", error)
 
-        if monitor.waitForAbort(2):
+        if self.is_playing_file(current_file):
+            self._reset_segment_checker(restart=True)
+
+        if self._wait(monitor, 2, generation):
             return
 
         if item["PlayOption"] == "Addon":
             self.set_audio_subs(item["AudioStreamIndex"], item["SubtitleStreamIndex"])
+
+    def _wait(self, monitor, timeout, generation):
+        """Wait in onPlayBackStarted. Kodi runs other callbacks meanwhile, so
+        playback may have stopped or started again: True means give up.
+        """
+        if monitor.waitForAbort(timeout):
+            return True
+
+        return self.playback_generation != generation
+
+    def _play_info_may_follow(self):
+        """Add-on paths set the playback info before playback starts. For direct
+        paths and songs, on_play sets it from the Player.OnPlay notification,
+        which Kodi only sends after this callback.
+        """
+        return settings("useDirectPaths") == "1" or self.isPlayingAudio()
 
     def set_item(self, file, item):
         """Set playback information."""
@@ -353,15 +390,26 @@ class Player(xbmc.Player):
             self.report_playback()
             LOG.info("--[ seek ]")
 
-            # Check skip segments immediately after seek
-            if settings("mediaSegmentsEnabled.bool"):
-                try:
-                    current_file = self.get_playing_file()
-                    item = self.get_file_info(current_file)
-                    current_pos = int(self.getTime())
-                    self.check_skip_segments(item, current_pos)
-                except Exception:
-                    pass
+            # Check skip segments right after the seek, in the segment checker
+            if self.segment_checker:
+                self.segment_checker.wake()
+
+    def track_position(self):
+        """Remember the position of the playing item for the stop report.
+        Called every second by the segment checker: in the stop callback the
+        position is gone, and the progress reports are up to 10 seconds old.
+        """
+        current_file = self.get_playing_file()
+
+        if not self.is_playing_file(current_file):
+            return
+
+        try:
+            position = self.getTime()
+        except RuntimeError:
+            return
+
+        self.get_file_info(current_file)["LastKnownPosition"] = position
 
     def report_playback(self, report=True):
         """Report playback progress to jellyfin server.
@@ -414,6 +462,7 @@ class Player(xbmc.Player):
         item["Volume"] = result.get("volume")
         item["Muted"] = result.get("muted")
         item["CurrentPosition"] = int(self.getTime())
+        item["LastKnownPosition"] = item["CurrentPosition"]
         self.detect_audio_subs(item)
 
         data = {
@@ -434,12 +483,14 @@ class Player(xbmc.Player):
 
     def onPlayBackStopped(self):
         """Will be called when user stops playing a file."""
+        self.playback_generation += 1
         window("jellyfin_play", clear=True)
         self.stop_playback()
         LOG.info("--<[ playback ]")
 
     def onPlayBackEnded(self):
         """Will be called when kodi stops playing a file."""
+        self.playback_generation += 1
         self.stop_playback()
         LOG.info("--<<[ playback ]")
 
@@ -462,6 +513,9 @@ class Player(xbmc.Player):
 
                 if int(item["CurrentPosition"]) == 1:
                     item["CurrentPosition"] = int(item["Runtime"])
+
+            elif "LastKnownPosition" in item:
+                item["CurrentPosition"] = item["LastKnownPosition"]
 
             data = {
                 "ItemId": item["Id"],
@@ -704,9 +758,10 @@ class Player(xbmc.Player):
             )
 
         elif mode == 2:  # Show skip button
-            self._show_skip_button(segment_type, safe_end - start, safe_end)
+            self._show_skip_button(segment_type, start, safe_end)
 
-    def _show_skip_button(self, segment_type, duration, end_time):
+    def _show_skip_button(self, segment_type, start_time, end_time):
+        duration = end_time - start_time
         LOG.debug(
             "_show_skip_button: type=%s, duration=%.1f, end_time=%.1f",
             segment_type,
@@ -729,53 +784,52 @@ class Player(xbmc.Player):
                 "1080i",
             )
             self.skip_dialog.set_skip_info(segment_type, duration)
+            self._skip_start_time = start_time
+            self._skip_end_time = end_time
             LOG.debug("_show_skip_button: calling show()")
             self.skip_dialog.show()
             LOG.debug("_show_skip_button: show() completed")
-
-            self._skip_end_time = end_time
-            self._monitor_skip_dialog()
         except Exception as e:
             LOG.error("_show_skip_button error: %s", e, exc_info=True)
 
-    def _monitor_skip_dialog(self):
-        """Monitor the skip dialog and handle user input or timeout."""
-        LOG.debug("_monitor_skip_dialog: starting, end_time=%.1f", self._skip_end_time)
-        monitor = xbmc.Monitor()
+    def update_skip_dialog(self):
+        """Handle user input on the skip dialog or close it after the segment.
+        Called by the segment checker, which created the dialog; never waits.
+        """
+        skip_dialog = self.skip_dialog
+        if not skip_dialog:
+            return
 
-        # Monitor loop - check for user input or end of segment
-        while self.skip_dialog and not monitor.abortRequested():
-            # Check if user clicked skip
-            if self.skip_dialog.is_skip():
-                self.seekTime(self._skip_end_time)
-                LOG.info("User skipped to %.1f", self._skip_end_time)
-                break
+        if skip_dialog.is_skip():
+            self.seekTime(self._skip_end_time)
+            LOG.info("User skipped to %.1f", self._skip_end_time)
 
-            # Check if user cancelled
-            if self.skip_dialog.is_cancel():
-                LOG.debug("User cancelled skip dialog")
-                break
+        elif skip_dialog.is_cancel():
+            LOG.debug("User cancelled skip dialog")
 
-            # Check if we've passed the segment end time
+        else:
             try:
-                current_pos = self.getTime()
-                if current_pos >= self._skip_end_time:
-                    LOG.debug(
-                        "_monitor_skip_dialog: passed end_time %.1f, closing",
-                        self._skip_end_time,
-                    )
-                    break
+                if self._skip_start_time <= self.getTime() < self._skip_end_time:
+                    return
             except Exception:
-                break
+                pass
 
-            if monitor.waitForAbort(0.2):
-                break
+            LOG.debug(
+                "update_skip_dialog: outside %.1f-%.1f, closing",
+                self._skip_start_time,
+                self._skip_end_time,
+            )
 
-        LOG.debug("_monitor_skip_dialog: exiting loop")
-        self._reset_skip_dialog()
+        try:
+            skip_dialog.close()
+        except Exception:
+            pass
 
-    def _reset_state(self, restart=False):
-        self._reset_segment_checker(restart)
+        if self.skip_dialog is skip_dialog:
+            self.skip_dialog = None
+
+    def _reset_state(self):
+        self._reset_segment_checker()
         self._reset_skip_dialog()
 
         self.up_next = False

@@ -182,5 +182,10 @@ class KeepAlive(threading.Thread):
         while not self.halt.is_set():
             if self.halt.wait(30):
                 break
-            else:
+
+            try:
                 self.ws.send(json.dumps({"MessageType": "KeepAlive", "Data": 30}))
+            except websocket.WebSocketConnectionClosedException:
+                # run_forever reconnects, on_open then starts a new keepalive
+                LOG.info("Websocket closed, keepalive ends")
+                break
