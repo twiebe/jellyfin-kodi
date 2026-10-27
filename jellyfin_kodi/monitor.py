@@ -59,6 +59,11 @@ class Monitor(xbmc.Monitor):
     def onScanFinished(self, library):
         LOG.info("--<[ kodi scan/%s ]", library)
 
+    def _clear_stopped_playlist(self):
+        if xbmc.getCondVisibility("!Player.HasMedia + !Window.IsVisible(busydialog)"):
+            xbmc.executebuiltin("Playlist.Clear")
+            LOG.info("[ playlist ] cleared")
+
     def onNotification(self, sender, method, data):
 
         if sender.lower() not in (
@@ -108,16 +113,12 @@ class Monitor(xbmc.Monitor):
                 Otherwise the next played item will be added the previous queue.
                 """
                 if method == "Player.OnStop":
-                    xbmc.sleep(
-                        3000
-                    )  # let's wait for the player, so we don't clear the canceled playlist by mistake.
-
-                    if xbmc.getCondVisibility(
-                        "!Player.HasMedia + !Window.IsVisible(busydialog)"
-                    ):
-
-                        xbmc.executebuiltin("Playlist.Clear")
-                        LOG.info("[ playlist ] cleared")
+                    # let's wait for the player, so we don't clear the canceled playlist by mistake.
+                    # The wait runs on a timer: sleeping here holds up the callbacks of every
+                    # other add-on (a skin's script waiting for the stop) for those 3 seconds.
+                    timer = threading.Timer(3.0, self._clear_stopped_playlist)
+                    timer.daemon = True
+                    timer.start()
 
                 return
 
