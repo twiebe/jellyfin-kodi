@@ -29,6 +29,7 @@ class Player(xbmc.Player):
     skip_dialog = None
     segment_checker = None
     on_play_handled = 0
+    playback_generation = 0
 
     def __init__(self):
         xbmc.Player.__init__(self)
@@ -54,6 +55,8 @@ class Player(xbmc.Player):
         First, ensure previous playback terminated correctly in Jellyfin.
         """
 
+        self.playback_generation += 1
+        generation = self.playback_generation
         self.stop_playback()
         self._reset_state()
         count = 0
@@ -72,7 +75,7 @@ class Player(xbmc.Player):
                 except Exception:
                     count += 1
 
-                if monitor.waitForAbort(1):
+                if self._wait(monitor, 1, generation):
                     return
             else:
                 LOG.info("Cancel playback report")
@@ -91,7 +94,7 @@ class Player(xbmc.Player):
 
         while not items:
 
-            if monitor.waitForAbort(2):
+            if self._wait(monitor, 2, generation):
                 return
 
             items = window("jellyfin_play.json")
@@ -150,11 +153,20 @@ class Player(xbmc.Player):
         if self.is_playing_file(current_file):
             self._reset_segment_checker(restart=True)
 
-        if monitor.waitForAbort(2):
+        if self._wait(monitor, 2, generation):
             return
 
         if item["PlayOption"] == "Addon":
             self.set_audio_subs(item["AudioStreamIndex"], item["SubtitleStreamIndex"])
+
+    def _wait(self, monitor, timeout, generation):
+        """Wait in onPlayBackStarted. Kodi runs other callbacks meanwhile, so
+        playback may have stopped or started again: True means give up.
+        """
+        if monitor.waitForAbort(timeout):
+            return True
+
+        return self.playback_generation != generation
 
     def _play_info_may_follow(self):
         """Add-on paths set the playback info before playback starts. For direct
@@ -449,12 +461,14 @@ class Player(xbmc.Player):
 
     def onPlayBackStopped(self):
         """Will be called when user stops playing a file."""
+        self.playback_generation += 1
         window("jellyfin_play", clear=True)
         self.stop_playback()
         LOG.info("--<[ playback ]")
 
     def onPlayBackEnded(self):
         """Will be called when kodi stops playing a file."""
+        self.playback_generation += 1
         self.stop_playback()
         LOG.info("--<<[ playback ]")
 

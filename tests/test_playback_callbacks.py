@@ -351,3 +351,58 @@ def test_segment_checker_checks_at_once_when_woken(monkeypatch):
     player, sleeps = _run_checker(monkeypatch, 5, wake_after_seek)
 
     assert player.check_skip_segments.call_count == 2
+
+
+def _stop_on_wait(number):
+    """Run onPlayBackStopped nested in the given waitForAbort, as Kodi does."""
+    waits = []
+
+    def wait(player):
+        waits.append(1)
+        if len(waits) == number:
+            player.onPlayBackStopped()
+
+    return wait
+
+
+def test_stop_while_waiting_for_the_item_aborts_started(monkeypatch):
+    item = _item()
+    player, monitor, checkers = _player(
+        monkeypatch, [None, [item]], direct_paths=True, waits=_stop_on_wait(1)
+    )
+
+    player.onPlayBackStarted()
+
+    player.set_item.assert_not_called()
+    item["Server"].jellyfin.session_playing.assert_not_called()
+    assert checkers == []
+
+
+def test_stop_while_waiting_to_set_the_streams_aborts_started(monkeypatch):
+    item = _item()
+    item["PlayOption"] = "Addon"
+    player, monitor, checkers = _player(monkeypatch, [[item]], waits=_stop_on_wait(1))
+
+    player.onPlayBackStarted()
+
+    player.set_audio_subs.assert_not_called()
+
+
+def test_next_started_while_waiting_aborts_the_previous_started(monkeypatch):
+    first, second = _item(), _item()
+    first["PlayOption"] = second["PlayOption"] = "Addon"
+    second["AudioStreamIndex"] = 2
+    nested = []
+
+    def start_next(player):
+        if not nested:
+            nested.append(1)
+            player.onPlayBackStarted()
+
+    player, monitor, checkers = _player(
+        monkeypatch, [[first], [second]], waits=start_next
+    )
+
+    player.onPlayBackStarted()
+
+    player.set_audio_subs.assert_called_once_with(2, None)
