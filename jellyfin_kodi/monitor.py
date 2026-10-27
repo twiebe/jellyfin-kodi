@@ -205,7 +205,11 @@ class Monitor(xbmc.Monitor):
             self.additional_users(server)
 
         elif method == "Player.OnPlay":
-            on_play(data, server)
+            try:
+                on_play(data, server)
+            finally:
+                # Tells onPlayBackStarted to stop waiting for the playback info.
+                self.player.on_play_handled += 1
 
         elif method == "VideoLibrary.OnUpdate":
             on_update(data, server)
