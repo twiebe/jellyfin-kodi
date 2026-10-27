@@ -1,5 +1,7 @@
 import threading
+
 import xbmc
+
 from .helper import LazyLogger, settings
 
 LOG = LazyLogger(__name__)
@@ -15,6 +17,7 @@ SEGMENT_TYPES_MAP = {
 
 class SegmentChecker(threading.Thread):
     stop_thread = False
+    waiting_logged = False
 
     def __init__(self, player):
         self.player = player
@@ -36,7 +39,8 @@ class SegmentChecker(threading.Thread):
                         item = self.player.get_file_info(current_file)
                         current_pos = int(self.player.getTime())
                         self.player.check_skip_segments(item, current_pos)
-                    else:
+                    elif not self.waiting_logged:
+                        self.waiting_logged = True
                         LOG.info("Current file is not yet playing: %s", current_file)
 
                 except Exception as e:
