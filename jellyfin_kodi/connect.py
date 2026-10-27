@@ -9,7 +9,16 @@ import xbmcgui
 from . import client
 from .database import get_credentials, save_credentials
 from .dialogs import ServerConnect, UsersConnect, LoginManual, ServerManual
-from .helper import settings, addon_id, event, api, window, LazyLogger, translate
+from .helper import (
+    settings,
+    addon_id,
+    event,
+    api,
+    window,
+    dialog,
+    LazyLogger,
+    translate,
+)
 from .jellyfin import Jellyfin
 from .jellyfin.connection_manager import CONNECTION_STATE
 from .helper.exceptions import HTTPException
@@ -20,6 +29,24 @@ LOG = LazyLogger(__name__)
 XML_PATH = (xbmcaddon.Addon(addon_id()).getAddonInfo("path"), "default", "1080i")
 
 ##################################################################################################
+
+
+def offer_save_password(manager, username, password):
+    """Ask whether to save the password next to the token, so the add-on can
+    sign in again by itself when the server deletes the token (it does that
+    when the user is disabled). A user without a password needs no question.
+    """
+    if not settings("offerSavePassword.bool"):
+        return
+    if password and not dialog(
+        "yesno",
+        "{jellyfin}",
+        translate(34072),
+        nolabel=translate(34073),
+        yeslabel=translate(34074),
+    ):
+        return
+    manager.save_password(username, password)
 
 
 class Connect(object):
@@ -123,6 +150,10 @@ class Connect(object):
             ):
                 state["Credentials"]["Servers"] = [self.select_servers(state)]
 
+            elif state.get("TokenRenewal") == "disabled":
+                # Signs in again with the saved password once the user is enabled
+                raise HTTPException("UserDisabled", {})
+
             elif state["State"] == CONNECTION_STATE["ServerSignIn"]:
                 if "ExchangeToken" not in state["Servers"][0]:
                     self.login()
@@ -148,8 +179,8 @@ class Connect(object):
 
         except HTTPException as error:
 
-            if error.status == "ServerUnreachable":
-                event("ServerUnreachable", {"ServerId": server_id})
+            if error.status in ("ServerUnreachable", "UserDisabled"):
+                event(error.status, {"ServerId": server_id})
 
             return client.get_credentials()
 
@@ -263,7 +294,10 @@ class Connect(object):
                 except RuntimeError:
                     pass
             else:
-                return self.connect_manager.login(server, username)
+                result = self.connect_manager.login(server, username)
+                if result:
+                    offer_save_password(self.connect_manager, username, "")
+                return result
 
         elif dialog.is_quick_connect():
             try:
@@ -355,6 +389,11 @@ class Connect(object):
         dialog.doModal()
 
         if dialog.is_logged_in():
+            offer_save_password(
+                manager or self.connect_manager,
+                dialog.get_username(),
+                dialog.get_password(),
+            )
             return dialog.get_user()
         else:
             raise RuntimeError("User is not authenticated")

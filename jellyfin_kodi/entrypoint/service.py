@@ -33,6 +33,7 @@ from ..helper import api
 from ..helper.utils import JsonDebugPrinter
 from ..helper.xmls import verify_kodi_defaults
 from ..jellyfin import Jellyfin
+from ..jellyfin.connection_manager import RENEW_RETRY_DELAY
 
 #################################################################################################
 
@@ -191,6 +192,7 @@ class Service(xbmc.Monitor):
                 "RepairLibrarySelection",
                 "AddServer",
                 "Unauthorized",
+                "UserDisabled",
                 "UserConfigurationUpdated",
                 "ServerRestarting",
                 "RemoveServer",
@@ -279,6 +281,17 @@ class Service(xbmc.Monitor):
                 self.stop_default()
 
                 if self.waitForAbort(5):
+                    return
+
+                self.start_default()
+
+        elif method == "UserDisabled":
+            # The saved password signs in again once the user is enabled,
+            # connection_manager says so and tries at most once a minute
+            if data.get("ServerId") is None:
+                self.stop_default()
+
+                if self.waitForAbort(RENEW_RETRY_DELAY):
                     return
 
                 self.start_default()
