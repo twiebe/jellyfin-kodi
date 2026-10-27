@@ -1,4 +1,4 @@
-version: '1:2.2.0-3'
+version: '1:2.2.0-4'
 changelog: |-
   Fork of jellyfin-kodi 2.2.0 (twiebe)
   ------------------------------------
@@ -18,6 +18,7 @@ changelog: |-
   + Remove the enhanced artwork setting
   + Short help text for every visible setting
   + Add to playlist in the Jellyfin options of movies, episodes, music videos and songs
+  + A stop no longer holds up other add-ons for 3 seconds (a skin's return to the info page)
 dependencies:
   py3:
     - addon: 'xbmc.python'
