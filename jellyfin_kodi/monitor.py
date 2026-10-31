@@ -40,10 +40,22 @@ def order_from_start_index(items, item_ids, start_index):
     return ordered[start_index:]
 
 
+def playlist_items(playlist_id):
+    """The items of a Kodi playlist, read on Kodi's main thread."""
+    result = JSONRPC("Playlist.GetItems").execute(
+        {"playlistid": playlist_id, "properties": ["file"]}
+    )
+
+    return result.get("result", {}).get("items", [])
+
+
 class Monitor(xbmc.Monitor):
 
     servers = []
     sleep = False
+    # Counts the stops and the plays and playlist changes Kodi announced after
+    # them, so a pending clear sees that its stop is no longer the last word.
+    stopped_playlists = 0
 
     def __init__(self):
 
@@ -59,10 +71,37 @@ class Monitor(xbmc.Monitor):
     def onScanFinished(self, library):
         LOG.info("--<[ kodi scan/%s ]", library)
 
-    def _clear_stopped_playlist(self):
-        if xbmc.getCondVisibility("!Player.HasMedia + !Window.IsVisible(busydialog)"):
-            xbmc.executebuiltin("Playlist.Clear")
-            LOG.info("[ playlist ] cleared")
+    def _clear_stopped_playlist(self, stop):
+        """Clear the music and video playlists the stop left behind, unless
+        something plays by now or a queue was set up since the stop.
+
+        The playlists are read right away and again before they are cleared:
+        one that changed in between holds a new queue, even when Kodi has not
+        announced it yet. Each read and each clear is a JSON-RPC call that
+        Kodi runs on its main thread before it returns, so the clear lands
+        where it was decided and not, like the Playlist.Clear builtin, after
+        the actions (a skin starting an album) queued there in the meantime.
+        """
+        stopped = {playlist_id: playlist_items(playlist_id) for playlist_id in (0, 1)}
+
+        if self.waitForAbort(3.0):
+            return
+
+        if not xbmc.getCondVisibility(
+            "!Player.HasMedia + !Window.IsVisible(busydialog)"
+        ):
+            return
+
+        current = {playlist_id: playlist_items(playlist_id) for playlist_id in stopped}
+
+        # Checked once, before the first clear: Kodi announces that clear too.
+        if stop != self.stopped_playlists:
+            return
+
+        for playlist_id, items in stopped.items():
+            if items and current[playlist_id] == items:
+                JSONRPC("Playlist.Clear").execute({"playlistid": playlist_id})
+                LOG.info("[ playlist/%s ] cleared", playlist_id)
 
     def onNotification(self, sender, method, data):
 
@@ -103,6 +142,15 @@ class Monitor(xbmc.Monitor):
             if data:
                 data = json.loads(binascii.unhexlify(data[0]))
         else:
+            if method in (
+                "Player.OnStop",
+                "Player.OnPlay",
+                "Playlist.OnAdd",
+                "Playlist.OnClear",
+                "Playlist.OnRemove",
+            ):
+                self.stopped_playlists += 1
+
             if method not in (
                 "Player.OnPlay",
                 "VideoLibrary.OnUpdate",
@@ -114,11 +162,13 @@ class Monitor(xbmc.Monitor):
                 """
                 if method == "Player.OnStop":
                     # let's wait for the player, so we don't clear the canceled playlist by mistake.
-                    # The wait runs on a timer: sleeping here holds up the callbacks of every
+                    # The wait runs on a thread: sleeping here holds up the callbacks of every
                     # other add-on (a skin's script waiting for the stop) for those 3 seconds.
-                    timer = threading.Timer(3.0, self._clear_stopped_playlist)
-                    timer.daemon = True
-                    timer.start()
+                    threading.Thread(
+                        target=self._clear_stopped_playlist,
+                        args=(self.stopped_playlists,),
+                        daemon=True,
+                    ).start()
 
                 return
 
