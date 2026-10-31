@@ -12,6 +12,7 @@ from . import connect
 from . import player
 from .client import get_device_id
 from .objects import PlaylistWorker, on_play, on_update, special_listener
+from .objects.actions import playlist_lock
 from .helper import translate, settings, window, dialog, api, JSONRPC
 from .helper.utils import JsonDebugPrinter
 from .jellyfin import Jellyfin
@@ -40,15 +41,6 @@ def order_from_start_index(items, item_ids, start_index):
     return ordered[start_index:]
 
 
-def playlist_items(playlist_id):
-    """The items of a Kodi playlist, read on Kodi's main thread."""
-    result = JSONRPC("Playlist.GetItems").execute(
-        {"playlistid": playlist_id, "properties": ["file"]}
-    )
-
-    return result.get("result", {}).get("items", [])
-
-
 class Monitor(xbmc.Monitor):
 
     servers = []
@@ -72,36 +64,30 @@ class Monitor(xbmc.Monitor):
         LOG.info("--<[ kodi scan/%s ]", library)
 
     def _clear_stopped_playlist(self, stop):
-        """Clear the music and video playlists the stop left behind, unless
-        something plays by now or a queue was set up since the stop.
+        """Clear the playlists a stop left behind, right at the stop.
 
-        The playlists are read right away and again before they are cleared:
-        one that changed in between holds a new queue, even when Kodi has not
-        announced it yet. Each read and each clear is a JSON-RPC call that
-        Kodi runs on its main thread before it returns, so the clear lands
-        where it was decided and not, like the Playlist.Clear builtin, after
-        the actions (a skin starting an album) queued there in the meantime.
+        Kodi drops the playlist position in the step that announces a stop
+        from the user or the end of the last item, and keeps it when it stops
+        one item to play another of the queue. Deciding here, and not some
+        seconds later, keeps the clear away from the next queue the user sets
+        up: the clear runs on Kodi's main thread before the builtin returns,
+        right after the stop, while a new queue comes from a later action.
         """
-        stopped = {playlist_id: playlist_items(playlist_id) for playlist_id in (0, 1)}
+        with playlist_lock:  # a remote Play command stops and builds its queue
+            if stop != self.stopped_playlists:
+                return  # a play or playlist change came after the stop
 
-        if self.waitForAbort(3.0):
-            return
+            if xbmc.getCondVisibility(
+                "Player.HasMedia | Window.IsVisible(busydialog)"
+                " | Window.IsVisible(busydialognocancel)"
+            ):
+                return
 
-        if not xbmc.getCondVisibility(
-            "!Player.HasMedia + !Window.IsVisible(busydialog)"
-        ):
-            return
+            if xbmc.getInfoLabel("Playlist.Position"):
+                return  # Kodi plays another item of the queue next
 
-        current = {playlist_id: playlist_items(playlist_id) for playlist_id in stopped}
-
-        # Checked once, before the first clear: Kodi announces that clear too.
-        if stop != self.stopped_playlists:
-            return
-
-        for playlist_id, items in stopped.items():
-            if items and current[playlist_id] == items:
-                JSONRPC("Playlist.Clear").execute({"playlistid": playlist_id})
-                LOG.info("[ playlist/%s ] cleared", playlist_id)
+            xbmc.executebuiltin("Playlist.Clear", True)
+            LOG.info("[ playlist ] cleared")
 
     def onNotification(self, sender, method, data):
 
@@ -161,9 +147,9 @@ class Monitor(xbmc.Monitor):
                 Otherwise the next played item will be added the previous queue.
                 """
                 if method == "Player.OnStop":
-                    # let's wait for the player, so we don't clear the canceled playlist by mistake.
-                    # The wait runs on a thread: sleeping here holds up the callbacks of every
-                    # other add-on (a skin's script waiting for the stop) for those 3 seconds.
+                    # On a thread: the clear waits for a remote Play command that is building
+                    # its queue, and waiting here holds up the callbacks of every other add-on
+                    # (a skin's script waiting for the stop).
                     threading.Thread(
                         target=self._clear_stopped_playlist,
                         args=(self.stopped_playlists,),
