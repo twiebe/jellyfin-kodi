@@ -1,4 +1,4 @@
-version: '1:2.2.0-5'
+version: '1:2.2.0-6'
 changelog: |-
   Fork of jellyfin-kodi 2.2.0 (twiebe)
   ------------------------------------
@@ -24,6 +24,7 @@ changelog: |-
   + The skip button closes when seeking back before the segment
   + Optionally save the password, so jellyfin-kodi signs in again by itself after the user was disabled
   + "Update password" no longer stops library updates until Kodi restarts
+  + A queue started shortly after a stop is no longer emptied, the whole album plays
 dependencies:
   py3:
     - addon: 'xbmc.python'
