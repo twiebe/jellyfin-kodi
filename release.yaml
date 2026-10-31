@@ -1,4 +1,4 @@
-version: '1:2.2.0-6'
+version: '1:2.2.0-7'
 changelog: |-
   Fork of jellyfin-kodi 2.2.0 (twiebe)
   ------------------------------------
@@ -25,6 +25,7 @@ changelog: |-
   + Optionally save the password, so jellyfin-kodi signs in again by itself after the user was disabled
   + "Update password" no longer stops library updates until Kodi restarts
   + A queue started shortly after a stop is no longer emptied, the whole album plays
+  + A stopped queue is cleared right at the stop, not 3 seconds later
 dependencies:
   py3:
     - addon: 'xbmc.python'
