@@ -23,6 +23,9 @@ from .obj import Objects
 #################################################################################################
 
 LOG = LazyLogger(__name__)
+# Held while a remote Play command stops the playback and builds its queue, so
+# the monitor does not clear the playlist that stop seems to leave behind.
+playlist_lock = threading.Lock()
 
 #################################################################################################
 
@@ -865,7 +868,8 @@ class PlaylistWorker(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
-        Actions(self.server_id).play_playlist(self.items, *self.args)
+        with playlist_lock:
+            Actions(self.server_id).play_playlist(self.items, *self.args)
 
 
 def on_update(data, server):

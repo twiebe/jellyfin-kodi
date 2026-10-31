@@ -1,20 +1,22 @@
 # -*- coding: utf-8 -*-
 
-import json
+import threading
 from unittest.mock import Mock
 
 from jellyfin_kodi import monitor as monitor_module
 from jellyfin_kodi.monitor import Monitor
 
+Thread = threading.Thread  # the tests replace threading.Thread
+
 
 class _Thread:
     """Stands in for threading.Thread and threading.Timer: records what the
-    monitor defers, so a test runs it at the moment it chooses."""
+    monitor defers, so a test runs it when it chooses."""
 
     started = []
 
     def __init__(self, *timer, target=None, args=(), daemon=False):
-        self.interval = None
+        self.interval = 0.0
         if timer:  # threading.Timer(interval, function)
             self.interval, target = timer
         self.target, self.args, self.daemon = target, args, daemon
@@ -22,83 +24,97 @@ class _Thread:
     def start(self):
         _Thread.started.append(self)
 
-    def run(self):
-        self.target(*self.args)
-
 
 class _Kodi:
-    """The playlists and the player of a fake Kodi. Builtins and JSON-RPC
-    playlist calls run on Kodi's main thread: a builtin is queued there and
-    the caller goes on, a JSON-RPC call waits until the main thread has run
-    everything queued before it and then the call itself."""
+    """The player and playlists of a fake Kodi, on a clock that counts the
+    seconds since the stop. A user action is due at its time; it runs on
+    Kodi's main thread before any playlist change the main thread applies
+    from then on. That is the order in the logs: the clear looked, found
+    nothing playing, and its Playlist.Clear came after the album the user
+    started at that moment."""
 
     def __init__(self, music=(), video=()):
         self.playlists = {0: list(music), 1: list(video)}
+        self.position = ""  # Kodi forgets it on a stop from the user
         self.has_media = False
-        self.cleared = []
-        self.main_thread = []
-        self.on_check = None
+        self.busy = False
+        self.clock = 0.0
+        self.actions = []  # (time, action) of the user
+        self.queued = []  # builtins queued on the main thread
+        self.cleared = 0
 
-    def run_main_thread(self):
-        while self.main_thread:
-            self.main_thread.pop(0)()
+    def user_action(self, time, action):
+        self.actions.append((time, action))
 
-    def clear(self, playlist_id):
-        self.playlists[playlist_id] = []
-        self.cleared.append(playlist_id)
+    def run_due(self, clock):
+        for due in [due for due in self.actions if due[0] <= clock]:
+            self.actions.remove(due)
+            due[1]()
 
-    def execute_builtin(self, builtin):
+    def clear(self):
+        self.run_due(self.clock)
+        self.playlists = {0: [], 1: []}
+        self.cleared += 1
+
+    def execute_builtin(self, builtin, wait=False):
         assert builtin == "Playlist.Clear"
-        self.main_thread.append(lambda: [self.clear(0), self.clear(1)])
+        if wait:
+            self.clear()
+        else:
+            self.queued.append(self.clear)
 
-    def execute_jsonrpc(self, query):
-        self.run_main_thread()
-        query = json.loads(query)
-        playlist_id = query["params"]["playlistid"]
-
-        if query["method"] == "Playlist.GetItems":
-            items = [{"file": path} for path in self.playlists[playlist_id]]
-            return json.dumps({"result": {"items": items}})
-
-        assert query["method"] == "Playlist.Clear"
-        self.clear(playlist_id)
-        return json.dumps({"result": "OK"})
+    def finish(self):
+        """The main thread catches up, then the rest of the user's actions."""
+        while self.queued:
+            self.queued.pop(0)()
+        self.run_due(float("inf"))
 
     def get_cond_visibility(self, condition):
-        has_media = self.has_media
-        if self.on_check:
-            self.on_check()
-        return not has_media
+        for name, value in (
+            ("Player.HasMedia", self.has_media),
+            ("Window.IsVisible(busydialognocancel)", self.busy),
+            ("Window.IsVisible(busydialog)", self.busy),
+        ):
+            condition = condition.replace(name, str(value))
+        condition = condition.replace("+", " and ").replace("|", " or ")
+        return eval(condition.replace("!", " not "))
+
+    def get_info_label(self, label):
+        assert label == "Playlist.Position"
+        return self.position
+
+    def start_album(self):
+        """What the skin does to play an album: clear, add the songs, open."""
+        self.playlists[0] = ["1.mp3", "2.mp3", "3.mp3"]
+        self.position = "1"
+        self.has_media = True
 
 
-def _stop(monkeypatch, kodi, during_wait=None):
-    """Stop playback and run the clear that the stop schedules, then let
-    Kodi's main thread catch up. during_wait runs while the clear waits for
-    the player, as a skin setting up its next queue would."""
-    monkeypatch.setattr(monitor_module.xbmc, "executeJSONRPC", kodi.execute_jsonrpc)
-    monkeypatch.setattr(
-        monitor_module.xbmc, "getCondVisibility", kodi.get_cond_visibility
-    )
-    monkeypatch.setattr(monitor_module.xbmc, "executebuiltin", kodi.execute_builtin)
+def _patch(monkeypatch, kodi):
+    for name, fake in (
+        ("getCondVisibility", kodi.get_cond_visibility),
+        ("getInfoLabel", kodi.get_info_label),
+        ("executebuiltin", kodi.execute_builtin),
+    ):
+        monkeypatch.setattr(monitor_module.xbmc, name, fake)
     monkeypatch.setattr(monitor_module.threading, "Thread", _Thread)
     monkeypatch.setattr(monitor_module.threading, "Timer", _Thread)
     _Thread.started = []
+
+
+def _stop(monkeypatch, kodi, after_stop=()):
+    """Stop the playback, deliver the notifications in AFTER_STOP and run
+    what the monitor deferred at the time it asked for."""
+    _patch(monkeypatch, kodi)
     monitor = Monitor.__new__(Monitor)
-
-    def wait_for_abort(timeout):
-        assert timeout == 3.0
-        if during_wait:
-            during_wait(monitor)
-        return False
-
-    monitor.waitForAbort = wait_for_abort
     monitor.onNotification("xbmc", "Player.OnStop", '{"end": false}')
+    for method in after_stop:
+        monitor.onNotification("xbmc", method, '{"playlistid": 0}')
     (thread,) = _Thread.started
     assert thread.daemon
-    if thread.interval and during_wait:
-        during_wait(monitor)  # a timer waits before it runs
-    thread.run()
-    kodi.run_main_thread()
+    kodi.clock += thread.interval
+    thread.target(*thread.args)
+    kodi.finish()
 
 
 def test_stop_does_not_block_the_callback(monkeypatch):
@@ -106,107 +122,76 @@ def test_stop_does_not_block_the_callback(monkeypatch):
     # (a skin script waiting for the stop) until the sleep is over.
     sleeps = []
     monkeypatch.setattr(monitor_module.xbmc, "sleep", sleeps.append)
-    monkeypatch.setattr(monitor_module.threading, "Thread", _Thread)
-    monkeypatch.setattr(monitor_module.threading, "Timer", _Thread)
-    _Thread.started = []
+    _patch(monkeypatch, _Kodi())
     Monitor.__new__(Monitor).onNotification("xbmc", "Player.OnStop", "{}")
     assert sleeps == []
     assert len(_Thread.started) == 1
     assert _Thread.started[0].daemon
 
 
-def test_stopped_playlist_is_cleared_when_nothing_plays(monkeypatch):
+def test_stopped_playlist_is_cleared(monkeypatch):
     kodi = _Kodi(music=["a.mp3", "b.mp3"], video=["queued.mkv"])
     _stop(monkeypatch, kodi)
-    assert kodi.cleared == [0, 1]
     assert kodi.playlists == {0: [], 1: []}
 
 
-def test_stopped_playlist_is_kept_when_the_next_item_plays(monkeypatch):
+def test_queue_started_after_the_stop_is_kept(monkeypatch):
+    # Stop the music, then start an album about 3 s later: only the current
+    # song played, the clear of the stopped playlist had emptied the queue.
     kodi = _Kodi(music=["a.mp3", "b.mp3"])
-
-    def next_item_plays(monitor):
-        kodi.has_media = True
-
-    _stop(monkeypatch, kodi, next_item_plays)
-    assert kodi.cleared == []
-
-
-def test_queue_set_up_after_the_stop_is_kept(monkeypatch):
-    # Stop the music, then start an album about 3 s later: the skin clears the
-    # playlist, adds the songs and opens the player in one go, on Kodi's main
-    # thread. If that lands while the clear waits, nothing plays yet when the
-    # clear looks, but the queue is new and must stay.
-    kodi = _Kodi(music=["a.mp3", "b.mp3"])
-
-    def album_queued(monitor):
-        kodi.playlists[0] = ["1.mp3", "2.mp3", "3.mp3"]
-
-    _stop(monkeypatch, kodi, album_queued)
-    assert kodi.playlists[0] == ["1.mp3", "2.mp3", "3.mp3"]
-    assert kodi.cleared == []
-
-
-def test_queue_set_up_while_the_clear_looks_is_kept(monkeypatch):
-    # The order in the logs: the clear finds nothing playing, the skin's album
-    # (clear, add the songs, open the player) runs on Kodi's main thread right
-    # then, and the clear lands after it and empties the new queue.
-    kodi = _Kodi(music=["a.mp3", "b.mp3"])
-
-    def album_started():
-        def on_main_thread():
-            kodi.playlists[0] = ["1.mp3", "2.mp3", "3.mp3"]
-            kodi.has_media = True
-
-        kodi.on_check = None
-        kodi.main_thread.append(on_main_thread)
-
-    kodi.on_check = album_started
+    kodi.user_action(3.0, kodi.start_album)
     _stop(monkeypatch, kodi)
     assert kodi.playlists[0] == ["1.mp3", "2.mp3", "3.mp3"]
-    assert kodi.cleared == []
 
 
-def test_queue_rebuilt_with_the_same_items_after_the_stop_is_kept(monkeypatch):
-    # The same album again: the items match the stopped ones, but Kodi
-    # announced the new queue after the stop.
+def test_playlist_is_kept_when_kodi_plays_another_item_of_it(monkeypatch):
+    # Choosing another song of the queue stops the playing one first; Kodi
+    # keeps the playlist position then.
     kodi = _Kodi(music=["a.mp3", "b.mp3"])
-
-    def album_queued_again(monitor):
-        monitor.onNotification("xbmc", "Playlist.OnClear", '{"playlistid": 0}')
-        for position in range(2):
-            monitor.onNotification(
-                "xbmc",
-                "Playlist.OnAdd",
-                json.dumps({"playlistid": 0, "position": position}),
-            )
-
-    _stop(monkeypatch, kodi, album_queued_again)
-    assert kodi.cleared == []
+    kodi.position = "2"
+    _stop(monkeypatch, kodi)
+    assert kodi.cleared == 0
 
 
-def test_only_the_playlist_left_by_the_stop_is_cleared(monkeypatch):
-    # A video queue set up after the music stopped stays; the stopped music
-    # playlist goes.
+def test_playlist_is_kept_when_something_plays(monkeypatch):
+    kodi = _Kodi(music=["a.mp3", "b.mp3"])
+    kodi.has_media = True
+    _stop(monkeypatch, kodi)
+    assert kodi.cleared == 0
+
+
+def test_playlist_is_kept_while_kodi_is_busy(monkeypatch):
+    # The busy dialog: something resolves the next item to play.
+    kodi = _Kodi(music=["a.mp3", "b.mp3"])
+    kodi.busy = True
+    _stop(monkeypatch, kodi)
+    assert kodi.cleared == 0
+
+
+def test_playlist_is_kept_when_it_changed_after_the_stop(monkeypatch):
+    kodi = _Kodi(music=["a.mp3", "b.mp3"])
+    _stop(monkeypatch, kodi, ["Playlist.OnClear", "Playlist.OnAdd"])
+    assert kodi.cleared == 0
+
+
+def test_clear_waits_for_a_remote_play_command(monkeypatch):
+    # PlayNow stops the playback, then builds its queue item by item: the
+    # stop must not clear what it built.
     kodi = _Kodi(music=["a.mp3"])
+    _patch(monkeypatch, kodi)
+    monitor = Monitor.__new__(Monitor)
 
-    def videos_queued(monitor):
-        kodi.playlists[1] = ["one.mkv", "two.mkv"]
+    with monitor_module.playlist_lock:
+        monitor.onNotification("xbmc", "Player.OnStop", '{"end": false}')
+        (deferred,) = _Thread.started
+        clear = Thread(target=deferred.target, args=deferred.args)
+        clear.start()
+        clear.join(0.2)
+        assert clear.is_alive()  # waits for the queue
+        kodi.start_album()
 
-    _stop(monkeypatch, kodi, videos_queued)
-    assert kodi.playlists == {0: [], 1: ["one.mkv", "two.mkv"]}
-
-
-def test_clear_is_dropped_when_kodi_shuts_down(monkeypatch):
-    kodi = _Kodi(music=["a.mp3"])
-    monkeypatch.setattr(Monitor, "waitForAbort", lambda self, timeout: True)
-    monkeypatch.setattr(monitor_module.threading, "Thread", _Thread)
-    monkeypatch.setattr(monitor_module.threading, "Timer", _Thread)
-    monkeypatch.setattr(monitor_module.xbmc, "executeJSONRPC", kodi.execute_jsonrpc)
-    _Thread.started = []
-    Monitor.__new__(Monitor).onNotification("xbmc", "Player.OnStop", "{}")
-    _Thread.started[0].run()
-    assert kodi.cleared == []
+    clear.join(5)
+    assert kodi.playlists[0] == ["1.mp3", "2.mp3", "3.mp3"]
 
 
 def test_on_play_tells_the_player_it_was_handled(monkeypatch):
