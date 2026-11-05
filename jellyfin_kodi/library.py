@@ -16,7 +16,8 @@ from .database import Database, jellyfin_db, get_sync, save_sync
 from .full_sync import FullSync
 from .views import Views
 from .downloader import GetItemWorker
-from .helper import translate, api, stop, settings, window, dialog, event, LazyLogger
+from .helper import translate, api, stop, settings, window, dialog, event, JSONRPC, LazyLogger
+from .helper.own_playback import is_own_echo
 from .helper.utils import split_list, set_screensaver, get_screensaver
 from .helper.exceptions import (
     LibraryException,
@@ -41,6 +42,8 @@ class Library(threading.Thread):
     stop_thread = False
     suspend = False
     pending_refresh = False
+    pending_scan = False
+    userdata_wants_scan = False
     screensaver = None
     progress_updates = None
     total_updates = 0
@@ -244,7 +247,9 @@ class Library(threading.Thread):
                 set_screensaver(value=self.screensaver)
                 self.screensaver = None
 
-            if xbmc.getCondVisibility(
+            if not self.pending_scan:  # Only the echo of our own playback
+                pass
+            elif xbmc.getCondVisibility(
                 "Container.Content(musicvideos)"
             ):  # Prevent cursor from moving
                 xbmc.executebuiltin("Container.Refresh")
@@ -254,12 +259,15 @@ class Library(threading.Thread):
                 if xbmc.getCondVisibility("Window.IsMedia"):
                     xbmc.executebuiltin("Container.Refresh")
 
+            self.pending_scan = False
+
     def stop_client(self):
         self.stop_thread = True
 
-    def enable_pending_refresh(self):
+    def enable_pending_refresh(self, scan=True):
         """When there's an active thread. Let the main thread know."""
         self.pending_refresh = True
+        self.pending_scan = self.pending_scan or scan
         window("jellyfin_sync.bool", True)
 
     def worker_queue_size(self):
@@ -356,7 +364,8 @@ class Library(threading.Thread):
                 new_thread.start()
                 LOG.info("-->[ q:userdata/%s/%s ]", queues, id(new_thread))
                 self.writer_threads["userdata"].append(new_thread)
-                self.enable_pending_refresh()
+                self.enable_pending_refresh(self.userdata_wants_scan)
+                self.userdata_wants_scan = False
 
     def worker_remove(self):
         """Remove items from the Kodi database."""
@@ -665,11 +674,32 @@ class Library(threading.Thread):
 
         items = [x["ItemId"] for x in data]
 
+        if not is_own_echo(data, self.kodi_state):
+            self.userdata_wants_scan = True
+
         for item in split_list(items, LIMIT):
             self.userdata_queue.put(item)
 
         self.total_updates += len(items)
         LOG.info("---[ userdata:%s ]", len(items))
+
+    def kodi_state(self, item_id):
+        """(watched, has a resume point) of a movie or episode in Kodi's library, else None."""
+        with Database("jellyfin") as jellyfindb:
+            row = jellyfin_db.JellyfinDatabase(jellyfindb.cursor).get_item_by_id(item_id)
+
+        if not row or row[4] not in ("movie", "episode"):
+            return None
+
+        kind = row[4]
+        result = JSONRPC("VideoLibrary.Get%sDetails" % kind.capitalize()).execute(
+            {kind + "id": row[0], "properties": ["playcount", "resume"]}
+        )
+        details = result.get("result", {}).get(kind + "details")
+        if not details:
+            return None
+
+        return details["playcount"] > 0, details["resume"]["position"] > 0
 
     def updated(self, data):
         """Add item_id to updated queue."""
