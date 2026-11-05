@@ -1,4 +1,4 @@
-version: '1:2.2.0-7'
+version: '1:2.2.0-8'
 changelog: |-
   Fork of jellyfin-kodi 2.2.0 (twiebe)
   ------------------------------------
@@ -26,6 +26,7 @@ changelog: |-
   + "Update password" no longer stops library updates until Kodi restarts
   + A queue started shortly after a stop is no longer emptied, the whole album plays
   + A stopped queue is cleared right at the stop, not 3 seconds later
+  + No second reload of the lists after a title played here: Kodi has done it already
 dependencies:
   py3:
     - addon: 'xbmc.python'
