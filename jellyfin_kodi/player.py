@@ -11,6 +11,7 @@ from .objects.obj import Objects
 from .helper import translate, api, window, settings, dialog, event, JSONRPC
 from .jellyfin import Jellyfin
 from .helper import LazyLogger
+from .helper.own_playback import note_own_playback
 from .segments import SegmentChecker, SEGMENT_TYPES_MAP
 
 #################################################################################################
@@ -122,6 +123,7 @@ class Player(xbmc.Player):
             "SubtitleStreamIndex": item["SubtitleStreamIndex"],
         }
         try:
+            note_own_playback(item["Id"])
             item["Server"].jellyfin.session_playing(data)
         except Exception as e:
             LOG.warning("Failed to report session playing: %s", e)
@@ -469,6 +471,7 @@ class Player(xbmc.Player):
                 "PositionTicks": int(item["CurrentPosition"] * 10000000),
                 "PlaySessionId": item["PlaySessionId"],
             }
+            note_own_playback(item["Id"])
             item["Server"].jellyfin.session_stop(data)
 
             if item.get("LiveStreamId"):
