@@ -209,7 +209,6 @@ class Monitor(xbmc.Monitor):
                 data.get("SubtitleStreamIndex"),
             ).start()
 
-        # TODO no clue if this is called by anything
         elif method == "PlayPlaylist":
 
             server.jellyfin.post_session(
