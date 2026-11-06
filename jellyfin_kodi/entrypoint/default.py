@@ -37,6 +37,8 @@ from ..jellyfin import Jellyfin
 
 LOG = LazyLogger(__name__)
 
+WINDOW_VIDEO_NAV = 10025
+
 ADDON_BASE_URL = sys.argv[0]
 try:
     PROCESS_HANDLE = int(sys.argv[1])
@@ -140,15 +142,8 @@ class Events(object):
             )
 
         elif mode == "playlist":
-            api_client.post_session(
-                api_client.config.data["app.session"],
-                "Playing",
-                {
-                    "PlayCommand": "PlayNow",
-                    "ItemIds": params["id"],
-                    "StartPositionTicks": 0,
-                },
-            )
+            # Only the service knows the session id, this process has none.
+            event("PlayPlaylist", {"Id": params["id"], "ServerId": server})
         elif mode == "deviceid":
             client.reset_device_id()
         elif mode == "reset":
@@ -723,12 +718,7 @@ def browse(media, view_id=None, folder=None, server_id=None, api_client=None):
 
             else:
                 if item["Type"] not in ("Photo", "PhotoAlbum"):
-                    params = {"id": item["Id"], "mode": "play", "server": server_id}
-                    path = "%s?%s" % (
-                        "plugin://plugin.video.jellyfin/",
-                        urlencode(params),
-                    )
-                    li.setProperty("path", path)
+                    set_click_path(item, li, server_id)
                     context = [
                         (
                             translate(13412),
@@ -825,6 +815,29 @@ def browse_letters(media, view_id, server_id=None):
 
     xbmcplugin.setContent(PROCESS_HANDLE, "files")
     xbmcplugin.endOfDirectory(PROCESS_HANDLE)
+
+
+def play_path(item_id, server_id):
+    """Path of a playable item in a listing. No slash before the query: a synced show
+    makes the add-on's root a tvshows path, and Kodi then ignores the info action on
+    anything below it. With "select" set to show information (the Nightcity skin does),
+    a click did nothing. Kodi plays this path all the same.
+    """
+    params = {"id": item_id, "mode": "play", "server": server_id}
+    return "plugin://plugin.video.jellyfin?%s" % urlencode(params)
+
+
+def set_click_path(item, li, server_id):
+    """Set what a click on a playable item of a listing does. Kodi has no info page for
+    a track in the Videos window: with "select" set to show information, a click on a
+    playable track did nothing. As not playable, Kodi runs the plugin on a click.
+    """
+    if item["Type"] == "Audio" and xbmcgui.getCurrentWindowId() == WINDOW_VIDEO_NAV:
+        li.setProperty("IsPlayable", "false")
+        params = {"mode": "playlist", "id": item["Id"], "server": server_id}
+        li.setProperty("path", "plugin://plugin.video.jellyfin/?%s" % urlencode(params))
+    else:
+        li.setProperty("path", play_path(item["Id"], server_id))
 
 
 def get_folder_type(item, content_type=None):
