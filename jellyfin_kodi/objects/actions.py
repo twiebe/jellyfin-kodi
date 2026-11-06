@@ -467,8 +467,10 @@ class Actions(object):
             "dateadded": obj["DateAdded"],
             "aired": obj["Year"],
             "date": obj["FileDate"],
-            "dbid": obj["DbId"],
         }
+        # Without an id Kodi would store 0, which reads as a library item.
+        if obj["DbId"] is not None:
+            metadata["dbid"] = obj["DbId"]
         listitem.setCast(API.get_actors())
 
         if obj["Premiere"]:
