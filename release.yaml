@@ -1,4 +1,4 @@
-version: '1:2.2.0-8'
+version: '1:2.2.0-9'
 changelog: |-
   Fork of jellyfin-kodi 2.2.0 (twiebe)
   ------------------------------------
@@ -27,6 +27,9 @@ changelog: |-
   + A queue started shortly after a stop is no longer emptied, the whole album plays
   + A stopped queue is cleared right at the stop, not 3 seconds later
   + No second reload of the lists after a title played here: Kodi has done it already
+  + A click on a title in a playlist or dynamic view opens its info page when select shows information (Nightcity), a track plays
+  + "Play from here" and "Play" on a playlist, series or season no longer fail with a KeyError
+  + A stop right after the start no longer leaves a refused stop report that repeats at every later start
 dependencies:
   py3:
     - addon: 'xbmc.python'
