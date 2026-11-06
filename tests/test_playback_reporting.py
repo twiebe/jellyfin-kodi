@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 from unittest.mock import Mock
 
+import pytest
+
 import jellyfin_kodi.player as player_module
 import jellyfin_kodi.segments as segments_module
+from jellyfin_kodi.helper.exceptions import HTTPException
 from jellyfin_kodi.jellyfin import ws_client
 
 from tests.test_playback_callbacks import _item, _segment_player, _SkipDialog
@@ -154,3 +157,36 @@ def test_keepalive_ends_quietly_when_the_connection_closed(monkeypatch):
 
     assert sock.sent == 1
     log.exception.assert_not_called()
+
+
+# Kodi's clock is slightly negative until the audio is up; Jellyfin refuses that
+def test_stop_never_reports_a_negative_position(monkeypatch):
+    item = _item()
+    item["LastKnownPosition"] = -0.076
+    player = _stopping_player(monkeypatch, item)
+
+    player.stop_playback()
+
+    assert _stop_ticks(item) == 0
+
+
+# The item stayed in played: every later start repeated the refused report and failed
+def test_a_refused_stop_report_is_not_repeated(monkeypatch):
+    item = _item()
+    item["Server"].jellyfin.session_stop.side_effect = HTTPException(400, "refused")
+    player = _stopping_player(monkeypatch, item)
+
+    player.stop_playback()
+
+    assert player.played == {}
+
+
+def test_a_stop_report_that_failed_otherwise_is_kept(monkeypatch):
+    item = _item()
+    item["Server"].jellyfin.session_stop.side_effect = HTTPException(500, "broken")
+    player = _stopping_player(monkeypatch, item)
+
+    with pytest.raises(HTTPException):
+        player.stop_playback()
+
+    assert player.played == {"movie": item}

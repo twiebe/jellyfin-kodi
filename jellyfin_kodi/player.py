@@ -11,6 +11,7 @@ from .objects.obj import Objects
 from .helper import translate, api, window, settings, dialog, event, JSONRPC
 from .jellyfin import Jellyfin
 from .helper import LazyLogger
+from .helper.exceptions import HTTPException
 from .helper.own_playback import note_own_playback
 from .segments import SegmentChecker, SEGMENT_TYPES_MAP
 
@@ -522,11 +523,18 @@ class Player(xbmc.Player):
             data = {
                 "ItemId": item["Id"],
                 "MediaSourceId": item["MediaSourceId"],
-                "PositionTicks": int(item["CurrentPosition"] * 10000000),
+                # Kodi's clock is slightly negative until the audio is up
+                "PositionTicks": max(int(item["CurrentPosition"] * 10000000), 0),
                 "PlaySessionId": item["PlaySessionId"],
             }
             note_own_playback(item["Id"])
-            item["Server"].jellyfin.session_stop(data)
+            try:
+                item["Server"].jellyfin.session_stop(data)
+            except HTTPException as error:
+                # Sending it again would only be refused again, at every later start
+                if error.status != 400:
+                    raise
+                LOG.warning("The server refused the stop report: %s", error.message)
 
             if item.get("LiveStreamId"):
 
