@@ -18,6 +18,7 @@ from .views import Views
 from .downloader import GetItemWorker
 from .helper import translate, api, stop, settings, window, dialog, event, JSONRPC, LazyLogger
 from .helper.own_playback import is_own_echo
+from .helper.wake import LIBRARY as WAKE, LINGER
 from .helper.utils import split_list, set_screensaver, get_screensaver
 from .helper.exceptions import (
     LibraryException,
@@ -107,7 +108,9 @@ class Library(threading.Thread):
 
                 break
 
-            if self.monitor.waitForAbort(2):
+            WAKE.wait(2)
+            WAKE.clear()
+            if self.monitor.abortRequested():
                 break
 
         LOG.info("---<[ library ]")
@@ -682,6 +685,7 @@ class Library(threading.Thread):
 
         self.total_updates += len(items)
         LOG.info("---[ userdata:%s ]", len(items))
+        WAKE.set()
 
     def kodi_state(self, item_id):
         """(watched, has a resume point) of a movie or episode in Kodi's library, else None."""
@@ -711,6 +715,7 @@ class Library(threading.Thread):
 
         self.total_updates += len(data)
         LOG.info("---[ updated:%s ]", len(data))
+        WAKE.set()
 
     def removed(self, data):
         """Add item_id to removed queue."""
@@ -726,6 +731,7 @@ class Library(threading.Thread):
 
         self.total_updates += len(data)
         LOG.info("---[ removed:%s ]", len(data))
+        WAKE.set()
 
 
 class UpdateWorker(threading.Thread):
@@ -764,7 +770,7 @@ class UpdateWorker(threading.Thread):
             while True:
 
                 try:
-                    item = self.queue.get(timeout=1)
+                    item = self.queue.get(timeout=LINGER)
                 except queue.Empty:
                     break
 
@@ -812,6 +818,7 @@ class UpdateWorker(threading.Thread):
 
         LOG.info("--<[ q:updated/%s ]", id(self))
         self.is_done = True
+        WAKE.set()
 
 
 class UserDataWorker(threading.Thread):
@@ -847,7 +854,7 @@ class UserDataWorker(threading.Thread):
             while True:
 
                 try:
-                    item = self.queue.get(timeout=1)
+                    item = self.queue.get(timeout=LINGER)
                 except queue.Empty:
                     break
 
@@ -881,6 +888,7 @@ class UserDataWorker(threading.Thread):
 
         LOG.info("--<[ q:userdata/%s ]", id(self))
         self.is_done = True
+        WAKE.set()
 
 
 class SortWorker(threading.Thread):
@@ -902,7 +910,7 @@ class SortWorker(threading.Thread):
             while True:
 
                 try:
-                    item_id = self.queue.get(timeout=1)
+                    item_id = self.queue.get(timeout=LINGER)
                 except queue.Empty:
                     break
 
@@ -933,6 +941,7 @@ class SortWorker(threading.Thread):
 
         LOG.info("--<[ q:sort/%s ]", id(self))
         self.is_done = True
+        WAKE.set()
 
 
 class RemovedWorker(threading.Thread):
@@ -968,7 +977,7 @@ class RemovedWorker(threading.Thread):
             while True:
 
                 try:
-                    item = self.queue.get(timeout=1)
+                    item = self.queue.get(timeout=LINGER)
                 except queue.Empty:
                     break
 
@@ -1005,6 +1014,7 @@ class RemovedWorker(threading.Thread):
 
         LOG.info("--<[ q:removed/%s ]", id(self))
         self.is_done = True
+        WAKE.set()
 
 
 class NotifyWorker(threading.Thread):
@@ -1050,3 +1060,4 @@ class NotifyWorker(threading.Thread):
 
         LOG.info("--<[ q:notify/%s ]", id(self))
         self.is_done = True
+        WAKE.set()
