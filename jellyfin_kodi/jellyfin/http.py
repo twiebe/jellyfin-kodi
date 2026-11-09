@@ -78,6 +78,7 @@ class HTTP(object):
         json: request body (optional)
         headers: (optional),
         verify: ssl certificate, True (verify using device built-in library) or False
+        raise_500: raise HTTPException on a 500 response instead of returning None (optional)
         """
         if not data:
             raise AttributeError("Request cannot be empty")
@@ -85,6 +86,7 @@ class HTTP(object):
         data = self._request(data)
         LOG.debug("--->[ http ] %s", JsonDebugPrinter(data))
         retry = data.pop("retry", 5)
+        raise_500 = data.pop("raise_500", False)
         # Taken out once, a retry must use the same method
         action = data.pop("type", "GET")
         token = self.config.data.get("auth.token")
@@ -178,7 +180,8 @@ class HTTP(object):
                 elif r.status_code == 500:  # log and ignore.
                     LOG.error("--[ 500 response ] %s", error)
 
-                    return
+                    if not raise_500:
+                        return
 
                 elif r.status_code == 502:
                     if retry:

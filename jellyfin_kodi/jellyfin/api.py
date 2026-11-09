@@ -239,7 +239,8 @@ class API(object):
         return self.videos("/%s/AdditionalParts" % item_id)
 
     def delete_item(self, item_id):
-        return self.items("/%s" % item_id, "DELETE")
+        # A failed delete must not pass for a done one
+        return self._http("DELETE", "Items/%s" % item_id, {"raise_500": True})
 
     def get_local_trailers(self, item_id):
         return self.user_items("/%s/LocalTrailers" % item_id)

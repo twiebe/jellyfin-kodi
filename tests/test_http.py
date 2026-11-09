@@ -165,3 +165,47 @@ def test_renewed_token_is_tried_only_once(auth_client):
     assert session.tokens == ["old", "new"]
     assert renewal.calls == ["old"]
     assert events == ["Unauthorized"]
+
+
+class ServerErrorResponse(FakeResponse):
+    status_code = 500
+
+    def raise_for_status(self):
+        raise requests.exceptions.HTTPError("500 Server Error")
+
+
+class ServerErrorSession(FakeSession):
+    def __init__(self):
+        FakeSession.__init__(self, failures=0)
+
+    def _request(self, method):
+        self.methods.append(method)
+        return ServerErrorResponse()
+
+
+def test_a_server_error_is_ignored_by_default(client):
+    assert (
+        client.request({"type": "GET", "handler": "Items"}, ServerErrorSession())
+        is None
+    )
+
+
+# A delete the server failed must not look like one it did
+def test_a_server_error_can_be_raised(client):
+    with pytest.raises(http_module.HTTPException) as error:
+        client.request(
+            {"type": "DELETE", "handler": "Items/1", "raise_500": True},
+            ServerErrorSession(),
+        )
+    assert error.value.status == 500
+
+
+def test_delete_item_raises_a_server_error():
+    from jellyfin_kodi.jellyfin.api import API
+
+    requests_made = []
+    api = API(SimpleNamespace(request=requests_made.append, config=None))
+    api.delete_item("1")
+    assert requests_made == [
+        {"type": "DELETE", "handler": "Items/1", "raise_500": True}
+    ]

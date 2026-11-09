@@ -11,6 +11,7 @@ from .objects.obj import Objects
 from .helper import translate, api, window, settings, dialog, event, JSONRPC
 from .jellyfin import Jellyfin
 from .helper import LazyLogger
+from .helper.deletion import delete_item
 from .helper.exceptions import HTTPException
 from .helper.own_playback import note_own_playback
 from .segments import SegmentChecker, SEGMENT_TYPES_MAP
@@ -579,7 +580,11 @@ class Player(xbmc.Player):
                     if dialog(
                         "yesno", translate(30091), translate(33015), autoclose=120000
                     ):
-                        item["Server"].jellyfin.delete_item(item["Id"])
+                        delete_item(
+                            item["Server"].jellyfin,
+                            item["Id"],
+                            server_id=item["ServerId"],
+                        )
 
             window("jellyfin.external_check", clear=True)
 
