@@ -14,6 +14,7 @@ from .helper import settings, stop, window, LazyLogger
 from .jellyfin import Jellyfin
 from .jellyfin import api
 from .helper.exceptions import HTTPException, ServerResponseException
+from .helper.wake import LIBRARY as WAKE, LINGER
 
 #################################################################################################
 
@@ -374,11 +375,12 @@ class GetItemWorker(threading.Thread):
         with requests.Session() as s:
             while True:
                 try:
-                    item_ids = self.queue.get(timeout=1)
+                    item_ids = self.queue.get(timeout=LINGER)
                 except queue.Empty:
 
                     self.is_done = True
                     LOG.info("--<[ q:download/%s ]", id(self))
+                    WAKE.set()
 
                     return
 
@@ -398,6 +400,7 @@ class GetItemWorker(threading.Thread):
 
                         if item["Type"] in self.output:
                             self.output[item["Type"]].put(item)
+                    WAKE.set()
                 except HTTPException as error:
                     LOG.error("--[ http status: %s ]", error.status)
 
