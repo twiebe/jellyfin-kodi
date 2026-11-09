@@ -12,6 +12,7 @@ import xbmcvfs
 from .. import database
 from ..dialogs import context
 from ..helper import translate, settings, dialog, LazyLogger
+from ..helper.deletion import delete_item
 from ..helper.exceptions import HTTPException
 from ..jellyfin import Jellyfin
 
@@ -249,7 +250,7 @@ class Context(object):
         if settings("skipContextMenu.bool") or dialog(
             "yesno", "{jellyfin}", translate(33015)
         ):
-            self.api_client.delete_item(self.item["Id"])
+            delete_item(self.api_client, self.item["Id"], server_id=self.server_id)
 
     def transcode(self):
         filename = xbmc.getInfoLabel("ListItem.Filenameandpath")
