@@ -1425,3 +1425,75 @@ msgstr "Der Benutzer ist auf dem Server deaktiviert. Jellyfin für Kodi meldet s
 msgctxt "#34078"
 msgid "Signed in to the server again"
 msgstr "Wieder am Server angemeldet"
+
+msgctxt "#34079"
+msgid "Poster width"
+msgstr "Posterbreite"
+
+msgctxt "#34080"
+msgid "Still and landscape width"
+msgstr "Breite von Standbildern und Landscape"
+
+msgctxt "#34081"
+msgid "Backdrop width"
+msgstr "Hintergrundbreite"
+
+msgctxt "#34082"
+msgid "Logo and banner width"
+msgstr "Breite von Logos und Bannern"
+
+msgctxt "#34083"
+msgid "Auto [default]"
+msgstr "Auto [Standard]"
+
+msgctxt "#34084"
+msgid "Unlimited"
+msgstr "Unbegrenzt"
+
+msgctxt "#34085"
+msgid "320 px"
+msgstr "320 px"
+
+msgctxt "#34086"
+msgid "480 px"
+msgstr "480 px"
+
+msgctxt "#34087"
+msgid "640 px"
+msgstr "640 px"
+
+msgctxt "#34088"
+msgid "960 px"
+msgstr "960 px"
+
+msgctxt "#34089"
+msgid "1280 px"
+msgstr "1280 px"
+
+msgctxt "#34090"
+msgid "1920 px"
+msgstr "1920 px"
+
+msgctxt "#34091"
+msgid "3840 px"
+msgstr "3840 px"
+
+msgctxt "#34092"
+msgid "Largest width of posters. Auto fits poster cards at the resolution of the GUI: Kodi draws a much larger image on a small card pixelated."
+msgstr "Größte Breite von Postern. Auto passt zu Poster-Kacheln in der Auflösung der Oberfläche: Ein viel größeres Bild zeigt Kodi auf einer kleinen Kachel pixelig."
+
+msgctxt "#34093"
+msgid "Largest width of episode stills and landscape images. Auto fits episode cards at the resolution of the GUI."
+msgstr "Größte Breite von Episoden-Standbildern und Landscape-Bildern. Auto passt zu Episoden-Kacheln in der Auflösung der Oberfläche."
+
+msgctxt "#34094"
+msgid "Largest width of backdrops. Auto fits the screen at the resolution of the GUI."
+msgstr "Größte Breite von Hintergrundbildern. Auto passt zum Bildschirm in der Auflösung der Oberfläche."
+
+msgctxt "#34095"
+msgid "Largest width of logos, clear art, banners and disc art. Auto fits a logo at the resolution of the GUI."
+msgstr "Größte Breite von Logos, Clear Art, Bannern und Disc Art. Auto passt zu einem Logo in der Auflösung der Oberfläche."
+
+msgctxt "#34096"
+msgid "Changes apply to the library at once. Music and photos keep their artwork size."
+msgstr "Änderungen gelten sofort für die Bibliothek. Musik und Fotos behalten ihre Bildgröße."

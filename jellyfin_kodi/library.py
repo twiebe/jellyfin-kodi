@@ -12,6 +12,7 @@ import xbmcgui
 
 from .objects import Movies, TVShows, MusicVideos, Music
 from .objects.kodi import Movies as KodiDb
+from .objects.kodi import artwork
 from .database import Database, jellyfin_db, get_sync, save_sync
 from .full_sync import FullSync
 from .views import Views
@@ -48,6 +49,7 @@ class Library(threading.Thread):
     screensaver = None
     progress_updates = None
     total_updates = 0
+    art_key = None
 
     def __init__(self, monitor):
 
@@ -140,6 +142,31 @@ class Library(threading.Thread):
                 xbmc.executebuiltin("UpdateLibrary(video)")
                 xbmc.executebuiltin("ReloadSkin()")
 
+    def start_art_sizes(self):
+        """At start: the artwork settings of an older version taken over, the
+        library's artwork URLs written anew if the settings changed meanwhile."""
+        api.migrate_art_sizes()
+        self.art_key = settings("artSizeApplied")
+        self.apply_art_sizes()
+
+    def apply_art_sizes(self):
+        """Write the artwork URLs of the library anew when the artwork settings,
+        or the GUI height their Auto follows, changed since they were written."""
+        key = api.art_key()
+        if key == self.art_key:
+            return
+
+        self.art_key = key
+        try:
+            with self.database_lock, Database("video") as videodb:
+                artwork.resize_urls(videodb.cursor)
+        except Exception as error:
+            # not again until the next start: it compares with the key written last
+            LOG.exception(error)
+            return
+
+        settings("artSizeApplied", key)
+
     @stop
     def service(self):
         """If error is encountered, it will rerun this function.
@@ -161,6 +188,8 @@ class Library(threading.Thread):
         self.notify_threads = [
             thread for thread in self.notify_threads if not thread.is_done
         ]
+        # the settings changed: onSettingsChanged reset the key and woke the thread
+        self.apply_art_sizes()
 
         if (
             not self.player.isPlayingVideo()
@@ -415,6 +444,7 @@ class Library(threading.Thread):
         """
         self.test_databases()
         self.check_version()
+        self.start_art_sizes()
 
         Views().get_views()
         Views().get_nodes()
@@ -690,7 +720,9 @@ class Library(threading.Thread):
     def kodi_state(self, item_id):
         """(watched, has a resume point) of a movie or episode in Kodi's library, else None."""
         with Database("jellyfin") as jellyfindb:
-            row = jellyfin_db.JellyfinDatabase(jellyfindb.cursor).get_item_by_id(item_id)
+            row = jellyfin_db.JellyfinDatabase(jellyfindb.cursor).get_item_by_id(
+                item_id
+            )
 
         if not row or row[4] not in ("movie", "episode"):
             return None

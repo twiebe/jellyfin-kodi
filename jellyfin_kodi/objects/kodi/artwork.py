@@ -2,7 +2,9 @@
 
 #################################################################################################
 
-from ...helper import LazyLogger
+import re
+
+from ...helper import LazyLogger, api
 
 from . import queries as QU
 
@@ -82,3 +84,50 @@ class Artwork(object):
     def delete(self, *args):
         """Delete artwork from kodi database"""
         self.cursor.execute(QU.delete_art, args)
+
+
+# Kodi's media types of the library and the Jellyfin items they are written from
+MEDIA_ITEM_TYPES = {
+    "movie": "Movie",
+    "set": "BoxSet",
+    "tvshow": "Series",
+    "season": "Season",
+    "episode": "Episode",
+    "musicvideo": "MusicVideo",
+}
+# An image URL of the server as API.get_artwork and API.get_backdrops write it
+SERVER_IMAGE = re.compile(
+    r"/Items/[^/?]+/Images/(\w+)(?:/\d+)?\?Format=original(?:&|$)"
+)
+SIZE_PARAMS = ("Quality", "MaxHeight", "MaxWidth")
+
+
+def resize_urls(cursor):
+    """Write the artwork URLs of the video library with the size and quality the
+    artwork settings give them now (api.art_query); the number of URLs changed.
+    Cast images keep their own size.
+    """
+    cursor.execute("SELECT art_id, media_type, url FROM art")
+    changes = []
+
+    for art_id, media_type, url in cursor.fetchall():
+        item_type = MEDIA_ITEM_TYPES.get(media_type)
+        match = SERVER_IMAGE.search(url or "")
+        if item_type is None or match is None:
+            continue
+
+        base, _, query = url.partition("?")
+        params = [p for p in query.split("&") if p.split("=", 1)[0] not in SIZE_PARAMS]
+        new = "%s?%s%s" % (
+            base,
+            "&".join(params),
+            api.art_query(api.art_kind(match.group(1), item_type)),
+        )
+        if new != url:
+            changes.append((new, art_id))
+
+    cursor.executemany("UPDATE art SET url = ? WHERE art_id = ?", changes)
+    if changes:
+        LOG.info("artwork sizes: %s URLs rewritten", len(changes))
+
+    return len(changes)

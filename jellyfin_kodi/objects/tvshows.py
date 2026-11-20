@@ -186,7 +186,7 @@ class TVShows(KodiDb):
                     self.episode(episode)
 
     def checksum(self, obj, *settings):
-        return sync_checksum(obj, api.art_query(), self.direct_path, *settings)
+        return sync_checksum(obj, api.ART_CHECKSUM, self.direct_path, *settings)
 
     @jellyfin_item
     def unchanged(self, item, e_item):
