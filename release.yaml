@@ -1,4 +1,4 @@
-version: '1:2.2.0-10'
+version: '1:2.2.0-11'
 changelog: |-
   Fork of jellyfin-kodi 2.2.0 (twiebe)
   ------------------------------------
@@ -32,6 +32,8 @@ changelog: |-
   + A stop right after the start no longer leaves a refused stop report that repeats at every later start
   + A deleted title leaves the Kodi library at once, not when the server reports it 30 seconds later
   + Library changes from the server reach Kodi in about 1 second instead of 5 to 6
+  + Artwork width per kind (posters, stills, backdrops, logos), Auto fits the GUI resolution; replaces max artwork resolution and compress artwork
+  + Changed artwork sizes apply to the library at once, no repair needed
 dependencies:
   py3:
     - addon: 'xbmc.python'
