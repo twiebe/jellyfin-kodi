@@ -174,7 +174,9 @@ class MusicVideos(KodiDb):
         return not update
 
     def checksum(self, obj):
-        return sync_checksum(obj, api.art_query(), self.direct_path, obj["LibraryName"])
+        return sync_checksum(
+            obj, api.ART_CHECKSUM, self.direct_path, obj["LibraryName"]
+        )
 
     @jellyfin_item
     def unchanged(self, item, e_item):

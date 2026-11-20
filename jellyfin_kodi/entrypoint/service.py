@@ -30,6 +30,7 @@ from ..helper import (
     LazyLogger,
 )
 from ..helper import api
+from ..helper.wake import LIBRARY as WAKE
 from ..helper.utils import JsonDebugPrinter
 from ..helper.xmls import verify_kodi_defaults
 from ..jellyfin import Jellyfin
@@ -437,6 +438,7 @@ class Service(xbmc.Monitor):
             return
 
         api.reset_art_query()
+        WAKE.set()  # the library thread writes new artwork sizes to the library
 
         if settings("logLevel") != self.settings["log_level"]:
 

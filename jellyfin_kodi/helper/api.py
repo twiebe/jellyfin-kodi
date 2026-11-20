@@ -12,34 +12,141 @@ from . import settings, LazyLogger
 
 LOG = LazyLogger(__name__)
 
+# Artwork is requested no wider than the place it fills, one setting per kind:
+# the value is the largest width in pixels, 0 Auto, -1 unlimited. Without mipmaps
+# Kodi draws a big image on a small card pixelated (a 1920x1080 still on an
+# episode card of 320x180), most on the GPUs of ARM boxes.
+ART_KINDS = ("poster", "thumb", "fanart", "logo")
+ART_SETTINGS = {
+    "poster": "artSizePoster",
+    "thumb": "artSizeThumb",
+    "fanart": "artSizeFanart",
+    "logo": "artSizeLogo",
+}
+# Auto at a GUI of 1080 lines: poster cards (up to 360 px wide in a library
+# view, some room for larger ones), episode and landscape cards (two times their
+# width), the full screen, a logo box. It follows the GUI height.
+ART_AUTO_1080 = {"poster": 400, "thumb": 640, "fanart": 1920, "logo": 800}
+ART_STEPS = (320, 480, 640, 960, 1280, 1920, 3840)
+# Items whose artwork keeps its size: square covers drawn large, photos viewed
+# full screen, channel logos
+ART_UNSIZED_TYPES = {
+    "MusicAlbum",
+    "MusicArtist",
+    "AlbumArtist",
+    "Audio",
+    "Photo",
+    "PhotoAlbum",
+    "TvChannel",
+    "Program",
+    "Recording",
+}
+# Items whose primary image is a still, not a poster
+ART_STILL_TYPES = {"Episode", "MusicVideo", "Video"}
+ART_IMAGE_KINDS = {
+    "Primary": "poster",
+    "BoxRear": "poster",
+    "Thumb": "thumb",
+    "Backdrop": "fanart",
+    "Logo": "logo",
+    "Art": "logo",
+    "Banner": "logo",
+    "Disc": "logo",
+}
+
+# The artwork settings once went into the checksum of a synced item, so a new
+# setting synced every item again. Now resize_urls rewrites the URLs; the
+# checksum keeps the value the settings had by default, earlier checksums hold.
+ART_CHECKSUM = ""
+
 # Reading a setting takes about a millisecond, too slow to do for every
 # item of a sync. The service resets this when the settings change.
-_art_query = None
+_art_queries = None
 
 
-def art_query():
-    """Image query parameters from the artwork settings."""
-    global _art_query
+def gui_size():
+    import xbmcgui
 
-    if _art_query is None:
-        query = ""
+    return xbmcgui.getScreenWidth(), xbmcgui.getScreenHeight()
 
-        if settings("compressArt.bool"):
-            query = "&Quality=90"
 
-        art_maxheight = [360, 480, 600, 720, 1080, -1]
-        maxheight = art_maxheight[int(settings("maxArtResolution") or 5)]
-        if maxheight != -1:
-            query += "&MaxHeight=%d" % maxheight
+def art_kind(image, item_type):
+    """The size setting of an IMAGE (Primary, Backdrop, ...) of an item of
+    ITEM_TYPE: poster, thumb, fanart, logo, or None for one that keeps its size.
+    """
+    if item_type in ART_UNSIZED_TYPES:
+        return None
+    if image == "Primary" and item_type in ART_STILL_TYPES:
+        return "thumb"
+    return ART_IMAGE_KINDS.get(image)
 
-        _art_query = query
 
-    return _art_query
+def _art_width(kind, width, height):
+    value = int(settings(ART_SETTINGS[kind]) or 0)
+    if value < 0:
+        return None
+    if value == 0:
+        auto = int(round(ART_AUTO_1080[kind] * height / 1080.0))
+        # a backdrop fills the screen: no wider than it on a 16:10 or 4:3 screen
+        return min(auto, width) if kind == "fanart" else auto
+    return value
+
+
+def _queries():
+    global _art_queries
+
+    if _art_queries is None:
+        # no quality: a resized image is encoded anew anyway, and the width saves
+        # far more than a lower quality (the former "compress artwork")
+        screen_width, height = gui_size()
+        height = height or 1080
+        screen_width = screen_width or height * 16 // 9
+        _art_queries = {None: ""}
+        for kind in ART_KINDS:
+            width = _art_width(kind, screen_width, height)
+            _art_queries[kind] = "&MaxWidth=%d" % width if width else ""
+
+    return _art_queries
+
+
+def art_query(kind=None):
+    """Image query parameters for artwork of KIND (art_kind)."""
+    return _queries()[kind]
+
+
+def art_key():
+    """What the artwork URLs are written with: changes with any artwork setting."""
+    queries = _queries()
+    return "|".join(queries[kind] for kind in (None,) + ART_KINDS)
 
 
 def reset_art_query():
-    global _art_query
-    _art_query = None
+    global _art_queries
+    _art_queries = None
+
+
+def _step(width):
+    return next((step for step in ART_STEPS if step >= width), ART_STEPS[-1])
+
+
+def migrate_art_sizes():
+    """Once: a max artwork resolution (a height for all artwork) becomes the
+    widths it gave posters and 16:9 images. Logos never reached that height."""
+    if settings("artSizeMigrated.bool"):
+        return
+
+    heights = [360, 480, 600, 720, 1080]
+    old = settings("maxArtResolution")
+    if old and old.isdigit() and int(old) < len(heights):
+        height = heights[int(old)]
+        settings("artSizePoster", str(_step(height * 2 // 3)))
+        settings("artSizeThumb", str(_step(height * 16 // 9)))
+        settings("artSizeFanart", str(_step(height * 16 // 9)))
+        settings("artSizeLogo", "0")
+        LOG.info("artwork sizes taken over from a max resolution of %s", height)
+
+    settings("artSizeMigrated.bool", True)
+    reset_art_query()
 
 
 ##################################################################################################
@@ -307,7 +414,11 @@ class API(object):
 
         obj is from objects.Objects().map(item, 'Artwork')
         """
-        query = art_query()
+        item_type = obj.get("Type")
+
+        def query(image):
+            return art_query(art_kind(image, item_type))
+
         all_artwork = {
             "Primary": "",
             "BoxRear": "",
@@ -320,38 +431,46 @@ class API(object):
         }
 
         all_artwork["Backdrop"] = self.get_backdrops(
-            obj["Id"], obj["BackdropTags"] or [], query
+            obj["Id"], obj["BackdropTags"] or [], query("Backdrop")
         )
 
         for artwork in obj["Tags"] or []:
             all_artwork[artwork] = self.get_artwork(
-                obj["Id"], artwork, obj["Tags"][artwork], query
+                obj["Id"], artwork, obj["Tags"][artwork], query(artwork)
             )
 
         if parent_info:
 
             if not all_artwork["Backdrop"] and obj["ParentBackdropId"]:
                 all_artwork["Backdrop"] = self.get_backdrops(
-                    obj["ParentBackdropId"], obj["ParentBackdropTags"], query
+                    obj["ParentBackdropId"],
+                    obj["ParentBackdropTags"],
+                    query("Backdrop"),
                 )
 
             for art in ("Logo", "Art", "Thumb"):
                 if not all_artwork[art] and obj["Parent%sId" % art]:
                     all_artwork[art] = self.get_artwork(
-                        obj["Parent%sId" % art], art, obj["Parent%sTag" % art], query
+                        obj["Parent%sId" % art],
+                        art,
+                        obj["Parent%sTag" % art],
+                        query(art),
                     )
 
             if obj.get("SeriesTag"):
                 all_artwork["Series.Primary"] = self.get_artwork(
-                    obj["SeriesId"], "Primary", obj["SeriesTag"], query
+                    obj["SeriesId"], "Primary", obj["SeriesTag"], art_query("poster")
                 )
 
                 if not all_artwork["Primary"]:
-                    all_artwork["Primary"] = all_artwork["Series.Primary"]
+                    # sized like the item's own primary image
+                    all_artwork["Primary"] = self.get_artwork(
+                        obj["SeriesId"], "Primary", obj["SeriesTag"], query("Primary")
+                    )
 
             elif not all_artwork["Primary"] and obj.get("AlbumId"):
                 all_artwork["Primary"] = self.get_artwork(
-                    obj["AlbumId"], "Primary", obj["AlbumTag"], query
+                    obj["AlbumId"], "Primary", obj["AlbumTag"], query("Primary")
                 )
 
         return all_artwork

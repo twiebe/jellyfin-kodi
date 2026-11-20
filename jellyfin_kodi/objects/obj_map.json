@@ -229,11 +229,13 @@
 	},
 	"Artwork": {
 		"Id": "Id",
+		"Type": "Type",
 		"Tags": "ImageTags",
 		"BackdropTags": "BackdropImageTags"
 	},
 	"ArtworkParent": {
 		"Id": "Id",
+		"Type": "Type",
 		"Tags": "ImageTags",
 		"BackdropTags": "BackdropImageTags",
 		"ParentBackdropId": "ParentBackdropItemId",
@@ -249,6 +251,7 @@
 	},
 	"ArtworkMusic": {
 		"Id": "Id",
+		"Type": "Type",
 		"Tags": "ImageTags",
 		"BackdropTags": "BackdropImageTags",
 		"ParentBackdropId": "ParentBackdropItemId",
