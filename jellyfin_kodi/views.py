@@ -102,6 +102,23 @@ DYNNODES = {
 #################################################################################################
 
 
+def write_xml(xml, file):
+    """Write the file unless it already holds this xml: the nodes and playlists
+    are written anew at every start and sync, mostly unchanged.
+    """
+    data = etree.tostring(xml, encoding="utf-8", xml_declaration=True)
+
+    try:
+        with open(file, "rb") as infile:
+            if infile.read() == data:
+                return
+    except OSError:
+        pass
+
+    with open(file, "wb") as outfile:
+        outfile.write(data)
+
+
 class Views(object):
 
     sync = None
@@ -278,8 +295,7 @@ class Views(object):
             rule = etree.SubElement(xml, "rule", {"field": "tag", "operator": "is"})
             etree.SubElement(rule, "value").text = view["Tag"]
 
-        tree = etree.ElementTree(xml)
-        tree.write(file, encoding="utf-8", xml_declaration=True)
+        write_xml(xml, file)
 
     def add_nodes(self, path, view, mixed=False):
         """Create or update the video node file."""
@@ -352,8 +368,7 @@ class Views(object):
         else:
             self.node_all(xml)
 
-        tree = etree.ElementTree(xml)
-        tree.write(file, encoding="utf-8", xml_declaration=True)
+        write_xml(xml, file)
 
     def node_root(self, root, index):
         """Create the root element"""
@@ -394,8 +409,7 @@ class Views(object):
             else "%s (%s)" % (view["Name"], translate(view["Media"]))
         )
 
-        tree = etree.ElementTree(xml)
-        tree.write(file, encoding="utf-8", xml_declaration=True)
+        write_xml(xml, file)
 
     def node(self, folder, view):
 
@@ -458,8 +472,7 @@ class Views(object):
             etree.SubElement(rule, "value").text = view["Tag"]
 
         getattr(self, "node_" + node)(xml)  # get node function based on node type
-        tree = etree.ElementTree(xml)
-        tree.write(file, encoding="utf-8", xml_declaration=True)
+        write_xml(xml, file)
 
     def add_dynamic_node(self, index, file, view, node, name, path):
 
@@ -484,8 +497,7 @@ class Views(object):
         label.text = name
 
         getattr(self, "node_" + node)(xml, path)
-        tree = etree.ElementTree(xml)
-        tree.write(file, encoding="utf-8", xml_declaration=True)
+        write_xml(xml, file)
 
     def node_all(self, root):
 
