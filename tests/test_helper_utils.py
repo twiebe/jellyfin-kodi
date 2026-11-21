@@ -11,6 +11,7 @@ else:
 
 import pytest
 
+from jellyfin_kodi.helper import utils
 from jellyfin_kodi.helper.utils import (
     convert_to_date,
     convert_to_local,
@@ -110,3 +111,38 @@ def test_convert_to_date(timestamp, expected):
 )
 def test_strip_credentials(url, expected):
     assert strip_credentials(url) == expected
+
+
+class FakeAddon:
+    def __init__(self, stored):
+        self.stored = stored
+        self.saved = []
+
+    def getSetting(self, key):
+        return self.stored.get(key, "")
+
+    def setSetting(self, key, value):
+        self.stored[key] = value
+        self.saved.append(key)
+
+
+@pytest.fixture
+def addon(monkeypatch):
+    addon = FakeAddon({"server": "http://jellyfin:8096", "kodiCompanion": "true"})
+    monkeypatch.setattr(utils.xbmcaddon, "Addon", lambda *args: addon)
+    return addon
+
+
+# Kodi writes settings.xml on every setSetting
+def test_setting_with_the_same_value_is_not_saved(addon):
+    utils.settings("server", "http://jellyfin:8096")
+    utils.settings("kodiCompanion.bool", True)
+    assert addon.saved == []
+
+
+def test_changed_setting_is_saved(addon):
+    utils.settings("server", "http://other:8096")
+    utils.settings("kodiCompanion.bool", False)
+    utils.settings("LastIncrementalSync", "2026-11-21T22:44:39Z")
+    assert addon.saved == ["server", "kodiCompanion", "LastIncrementalSync"]
+    assert addon.stored["kodiCompanion"] == "false"
