@@ -1,4 +1,4 @@
-version: '1:2.2.0-11'
+version: '1:2.2.0-12'
 changelog: |-
   Fork of jellyfin-kodi 2.2.0 (twiebe)
   ------------------------------------
@@ -34,6 +34,7 @@ changelog: |-
   + Library changes from the server reach Kodi in about 1 second instead of 5 to 6
   + Artwork width per kind (posters, stills, backdrops, logos), Auto fits the GUI resolution; replaces max artwork resolution and compress artwork
   + Changed artwork sizes apply to the library at once, no repair needed
+  + The backdrop width setting is called fanart width, as in Kodi
 dependencies:
   py3:
     - addon: 'xbmc.python'
