@@ -77,3 +77,19 @@ def test_a_failed_rewrite_keeps_the_library_thread_and_is_tried_at_the_next_star
     lib.apply_art_sizes()
     lib.apply_art_sizes()
     assert stored["artSizeApplied"] == "old"
+
+
+def test_lists_and_widgets_reload_after_a_rewrite(monkeypatch):
+    builtins = []
+    monkeypatch.setattr(library.xbmc, "executebuiltin", builtins.append)
+    monkeypatch.setattr(library.xbmc, "getCondVisibility", lambda c: True)
+    key = ["auto"]
+    lib, _, _ = _library(monkeypatch, key, "old")
+    lib.art_key = "old"
+    lib.apply_art_sizes()
+    assert builtins == ["UpdateLibrary(video)", "Container.Refresh"]
+    # nothing rewritten: nothing to reload
+    monkeypatch.setattr(artwork, "resize_urls", lambda cursor: 0)
+    key[0] = "960"
+    lib.apply_art_sizes()
+    assert builtins == ["UpdateLibrary(video)", "Container.Refresh"]

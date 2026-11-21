@@ -159,13 +159,18 @@ class Library(threading.Thread):
         self.art_key = key
         try:
             with self.database_lock, Database("video") as videodb:
-                artwork.resize_urls(videodb.cursor)
+                changed = artwork.resize_urls(videodb.cursor)
         except Exception as error:
             # not again until the next start: it compares with the key written last
             LOG.exception(error)
             return
 
         settings("artSizeApplied", key)
+        if changed:
+            # lists and widgets already loaded keep the former URLs until reloaded
+            xbmc.executebuiltin("UpdateLibrary(video)")
+            if xbmc.getCondVisibility("Window.IsMedia"):
+                xbmc.executebuiltin("Container.Refresh")
 
     @stop
     def service(self):
