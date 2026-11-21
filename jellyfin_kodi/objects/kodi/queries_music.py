@@ -194,9 +194,26 @@ INSERT OR REPLACE INTO      album_artist(idArtist, idAlbum, strArtist)
 VALUES                      (?, ?, ?)
 """
 update_link_obj = ["{ArtistId}", "{AlbumId}", "{Name}"]
+# discography has no unique index: REPLACE added the album again at every sync
 update_discography = """
-INSERT OR REPLACE INTO      discography(idArtist, strAlbum, strYear)
-VALUES                      (?, ?, ?)
+INSERT INTO     discography(idArtist, strAlbum, strYear)
+SELECT          *
+FROM            (SELECT ? AS idArtist, ? AS strAlbum, ? AS strYear) AS new
+WHERE NOT EXISTS (
+    SELECT      1
+    FROM        discography
+    WHERE       idArtist IS new.idArtist
+    AND         strAlbum IS new.strAlbum
+    AND         strYear IS new.strYear
+)
+"""
+delete_duplicate_discography = """
+DELETE FROM     discography
+WHERE           rowid NOT IN (
+    SELECT      MIN(rowid)
+    FROM        discography
+    GROUP BY    idArtist, strAlbum, strYear
+)
 """
 update_discography_obj = ["{ArtistId}", "{Title}", "{Year}"]
 update_album = """

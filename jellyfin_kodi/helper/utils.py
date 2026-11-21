@@ -85,7 +85,9 @@ def settings(setting, value=None):
             setting = setting.replace(".bool", "")
             value = "true" if value else "false"
 
-        addon.setSetting(setting, value)
+        # Kodi writes all of settings.xml anew on every setSetting, also for the same value
+        if addon.getSetting(setting) != value:
+            addon.setSetting(setting, value)
     else:
         result = addon.getSetting(setting.replace(".bool", ""))
 

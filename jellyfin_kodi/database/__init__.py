@@ -352,7 +352,8 @@ def get_sync():
 
     sync["Libraries"] = sync.get("Libraries", [])
     sync["RestorePoint"] = sync.get("RestorePoint", {})
-    sync["Whitelist"] = list(set(sync.get("Whitelist", [])))
+    # Without duplicates, in the saved order
+    sync["Whitelist"] = list(dict.fromkeys(sync.get("Whitelist", [])))
     sync["SortedViews"] = sync.get("SortedViews", [])
 
     # Temporary cleanup from #494/#511, remove in a future version
@@ -366,9 +367,21 @@ def save_sync(sync):
     if not xbmcvfs.exists(ADDON_DATA):
         xbmcvfs.mkdirs(ADDON_DATA)
 
+    path = os.path.join(ADDON_DATA, "sync.json")
+
+    # Saved at every start and sync, mostly unchanged: keep the file then
+    try:
+        with open(path, "rb") as infile:
+            saved = json.load(infile)
+    except Exception:
+        saved = None
+
+    if isinstance(saved, dict) and dict(sync, Date=saved.get("Date")) == saved:
+        return
+
     sync["Date"] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    with open(os.path.join(ADDON_DATA, "sync.json"), "wb") as outfile:
+    with open(path, "wb") as outfile:
         data = json.dumps(sync, sort_keys=True, indent=4, ensure_ascii=False)
         if isinstance(data, str):
             data = data.encode("utf-8")
