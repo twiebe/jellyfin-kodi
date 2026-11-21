@@ -1602,8 +1602,8 @@ msgid "Still and landscape width"
 msgstr "Still and landscape width"
 
 msgctxt "#34081"
-msgid "Backdrop width"
-msgstr "Backdrop width"
+msgid "Fanart width"
+msgstr "Fanart width"
 
 msgctxt "#34082"
 msgid "Logo and banner width"
@@ -1654,8 +1654,8 @@ msgid "Largest width of episode stills and landscape images. Auto fits episode c
 msgstr "Largest width of episode stills and landscape images. Auto fits episode cards at the resolution of the GUI."
 
 msgctxt "#34094"
-msgid "Largest width of backdrops. Auto fits the screen at the resolution of the GUI."
-msgstr "Largest width of backdrops. Auto fits the screen at the resolution of the GUI."
+msgid "Largest width of fanart, the backgrounds that fill the screen. Auto fits the screen at the resolution of the GUI."
+msgstr "Largest width of fanart, the backgrounds that fill the screen. Auto fits the screen at the resolution of the GUI."
 
 msgctxt "#34095"
 msgid "Largest width of logos, clear art, banners and disc art. Auto fits a logo at the resolution of the GUI."
