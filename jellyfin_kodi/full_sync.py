@@ -549,6 +549,7 @@ class FullSync(object):
                     obj = Music(
                         self.server, jellyfindb, musicdb, self.direct_path, library
                     )
+                    obj.skip_unchanged = self.update_library
                     obj.delete_duplicate_discography()
 
                     library_id = library["Id"]

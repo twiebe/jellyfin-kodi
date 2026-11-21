@@ -11,6 +11,7 @@ from ..helper.exceptions import PathValidationException
 
 from .obj import Objects
 from .kodi import Music as KodiDb, queries_music as QU
+from .utils import sync_checksum
 
 ##################################################################################################
 
@@ -31,9 +32,32 @@ class Music(KodiDb):
         self.jellyfin_db = jellyfin_db.JellyfinDatabase(jellyfindb.cursor)
         self.objects = Objects()
         self.item_ids = []
+        # Set by the update sync: don't rewrite items that didn't change
+        self.skip_unchanged = False
         self.library = library
 
         KodiDb.__init__(self, musicdb.cursor)
+
+    def checksum(self, obj):
+        return sync_checksum(obj, api.ART_CHECKSUM, self.direct_path)
+
+    def unchanged(self, obj, e_item, update):
+        """Whether the update sync can skip the item: Kodi's triggers write
+        every update of an artist, album or song, even with the same values.
+        """
+        obj["SyncChecksum"] = self.checksum(obj)
+
+        if update and self.skip_unchanged and e_item[8] == obj["SyncChecksum"]:
+            self.item_ids.append(obj["Id"])
+
+            return True
+
+        return False
+
+    def save_checksum(self, obj):
+        self.jellyfin_db.update_sync_checksum(
+            *values(obj, QUEM.update_sync_checksum_obj)
+        )
 
     @stop
     @jellyfin_item
@@ -73,6 +97,9 @@ class Music(KodiDb):
                     obj["ArtistId"],
                 )
 
+        if self.unchanged(obj, e_item, update):
+            return
+
         obj["LastScraped"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         obj["ArtistType"] = "MusicArtist"
         obj["Genre"] = " / ".join(obj["Genres"] or [])
@@ -103,6 +130,7 @@ class Music(KodiDb):
             obj["ArtistId"],
         )
         self.artwork.add(obj["Artwork"], obj["ArtistId"], "artist")
+        self.save_checksum(obj)
         self.item_ids.append(obj["Id"])
 
     def artist_add(self, obj):
@@ -155,6 +183,9 @@ class Music(KodiDb):
                     "AlbumId %s missing from kodi. repairing the entry.", obj["AlbumId"]
                 )
 
+        if self.unchanged(obj, e_item, update):
+            return
+
         obj["Rating"] = 0
         obj["LastScraped"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         obj["Runtime"] = (obj["Runtime"] or 0) / 10000000.0
@@ -185,6 +216,7 @@ class Music(KodiDb):
         self.update_album_duration(*values(obj, QU.update_album_duration_obj))
         self.add_genres(*values(obj, QU.add_genres_obj))
         self.artwork.add(obj["Artwork"], obj["AlbumId"], "album")
+        self.save_checksum(obj)
         self.item_ids.append(obj["Id"])
 
     def album_add(self, obj):
@@ -288,6 +320,9 @@ class Music(KodiDb):
                     "SongId %s missing from kodi. repairing the entry.", obj["SongId"]
                 )
 
+        if self.unchanged(obj, e_item, update):
+            return False
+
         self.get_song_path_filename(obj, API)
 
         obj["Rating"] = 0
@@ -328,6 +363,7 @@ class Music(KodiDb):
 
         self.add_genres(*values(obj, QU.update_genre_song_obj))
         self.artwork.add(obj["Artwork"], obj["SongId"], "song")
+        self.save_checksum(obj)
         self.item_ids.append(obj["Id"])
 
         if obj["SongAlbumId"] is None:
