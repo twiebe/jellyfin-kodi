@@ -102,6 +102,10 @@ class Music(Kodi):
     def add_discography(self, *args):
         self.cursor.execute(QU.update_discography, args)
 
+    def delete_duplicate_discography(self):
+        """The entries the syncs of former versions added again each time."""
+        self.cursor.execute(QU.delete_duplicate_discography)
+
     def validate_artist(self, *args):
 
         try:
