@@ -212,9 +212,14 @@ add_reference_song_obj = [
     "{LibraryId}",
     "{JellyfinParentId}",
 ]
+# REPLACE deleted and inserted even an unchanged row, at every start
 add_view = """
-INSERT OR REPLACE INTO      view(view_id, view_name, media_type)
+INSERT INTO                 view(view_id, view_name, media_type)
 VALUES                      (?, ?, ?)
+ON CONFLICT(view_id) DO UPDATE
+SET                         view_name = excluded.view_name, media_type = excluded.media_type
+WHERE                       view_name IS NOT excluded.view_name
+OR                          media_type IS NOT excluded.media_type
 """
 add_version = """
 INSERT OR REPLACE INTO      version(idVersion)
