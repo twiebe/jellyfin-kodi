@@ -1,4 +1,4 @@
-version: '1:2.2.0-12'
+version: '1:2.2.0-13'
 changelog: |-
   Fork of jellyfin-kodi 2.2.0 (twiebe)
   ------------------------------------
@@ -35,6 +35,7 @@ changelog: |-
   + Artwork width per kind (posters, stills, backdrops, logos), Auto fits the GUI resolution; replaces max artwork resolution and compress artwork
   + Changed artwork sizes apply to the library at once, no repair needed
   + The backdrop width setting is called fanart width, as in Kodi
+  + Lists and widgets show changed artwork sizes at once, not only after a restart
 dependencies:
   py3:
     - addon: 'xbmc.python'
